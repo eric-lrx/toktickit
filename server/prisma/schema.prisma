@@ -10,4 +10,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Issue 3 adds the Category model here.
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
