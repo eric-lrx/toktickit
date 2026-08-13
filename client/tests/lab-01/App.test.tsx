@@ -15,16 +15,22 @@ describe("App", () => {
     expect(screen.getByText(/TokTickIT/i)).toBeInTheDocument();
   });
 
-  it("shows Online when the health check succeeds", async () => {
+  it("shows Online and the seeded categories on success", async () => {
     vi.spyOn(api, "checkSystem").mockResolvedValue({
       online: true,
-      categories: [],
+      categories: [
+        { id: 1, name: "Account and Access" },
+        { id: 2, name: "Hardware" },
+        { id: 3, name: "Software" },
+        { id: 4, name: "Network" },
+      ],
     });
 
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: /check system/i }));
 
     expect(await screen.findByText(/System Status: Online/i)).toBeInTheDocument();
+    expect(screen.getByText("Hardware")).toBeInTheDocument();
   });
 
   it("shows an Offline error message when the API is unavailable", async () => {
