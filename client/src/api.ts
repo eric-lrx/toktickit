@@ -10,9 +10,13 @@ export interface SystemStatus {
   categories: Category[];
 }
 
-// Issue 2 calls GET /api/health here, Issue 4 adds GET /api/categories.
 // Throwing on failure lets the UI show a single Offline/error state.
+// Issue 4 adds the GET /api/categories call.
 export async function checkSystem(): Promise<SystemStatus> {
-  void API_URL;
-  throw new Error("Not implemented yet");
+  const healthRes = await fetch(`${API_URL}/api/health`);
+  if (!healthRes.ok) {
+    throw new Error("Backend health check failed");
+  }
+
+  return { online: true, categories: [] };
 }
