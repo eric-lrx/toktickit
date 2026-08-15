@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+import { getPrisma } from "./prisma.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -21,5 +22,16 @@ app.get("/api/health", (_req: Request, res: Response) => {
 // Issue 4 — category list
 // GET /api/categories must read the seeded categories through Prisma.
 // ---------------------------------------------------------------------------
+app.get("/api/categories", async (_req: Request, res: Response) => {
+  try {
+    const categories = await getPrisma().category.findMany({
+      orderBy: { id: "asc" },
+      select: { id: true, name: true },
+    });
+    res.status(200).json(categories);
+  } catch {
+    res.status(500).json({ error: "Unable to load categories" });
+  }
+});
 
 export default app;
