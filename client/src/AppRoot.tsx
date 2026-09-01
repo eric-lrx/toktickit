@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import RequesterSelector, { REQUESTER_STORAGE_KEY } from "./RequesterSelector.js";
 import Shell from "./Shell.js";
+import CreateTicket from "./CreateTicket.js";
 import { getActiveRequesters, Requester } from "./api.js";
 
 function getStoredRequesterId(): number | null {
@@ -27,9 +28,19 @@ export default function AppRoot() {
       return;
     }
     let cancelled = false;
-    getActiveRequesters().then((list) => {
-      if (!cancelled) setRequester(list.find((r) => r.id === requesterId) ?? null);
-    });
+    getActiveRequesters()
+      .then((list) => {
+        if (!cancelled) setRequester(list.find((r) => r.id === requesterId) ?? null);
+      })
+      .catch(() => {
+        // Resolving the Requester's name failed (e.g. backend unreachable).
+        // Fall back to the Selector rather than a permanent "Loading…" —
+        // it already has its own tested failure/retry state.
+        if (!cancelled) {
+          localStorage.removeItem(REQUESTER_STORAGE_KEY);
+          setRequesterId(null);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -49,7 +60,7 @@ export default function AppRoot() {
         <Routes>
           <Route path="/" element={<Navigate to="/tickets" replace />} />
           <Route path="/tickets" element={<ComingSoon label="My Tickets" />} />
-          <Route path="/tickets/new" element={<ComingSoon label="Create Ticket" />} />
+          <Route path="/tickets/new" element={<CreateTicket requesterId={requester.id} />} />
           <Route path="/tickets/:id" element={<ComingSoon label="Ticket Detail" />} />
         </Routes>
       </Shell>

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CreateTicket from "../../src/CreateTicket.js";
 import * as api from "../../src/api.js";
+import type { Ticket } from "../../src/api.js";
 
 function mockReferenceData() {
   vi.spyOn(api, "getCategories").mockResolvedValue([{ id: 1, name: "Hardware" }]);
@@ -34,7 +35,7 @@ describe("CreateTicket", () => {
 
   it("disables Submit and shows a busy label while the request is pending", async () => {
     mockReferenceData();
-    let resolveCreate: (value: unknown) => void = () => {};
+    let resolveCreate: (value: Ticket) => void = () => {};
     vi.spyOn(api, "createTicket").mockReturnValue(
       new Promise((resolve) => {
         resolveCreate = resolve;
@@ -47,6 +48,7 @@ describe("CreateTicket", () => {
 
     const busyButton = await screen.findByRole("button", { name: /submitting/i });
     expect(busyButton).toBeDisabled();
+
     resolveCreate({
       id: 1,
       ticketNumber: "TKT-2026-000001",
@@ -60,6 +62,7 @@ describe("CreateTicket", () => {
       createdAt: "",
       updatedAt: "",
     });
+    await screen.findByText(/TKT-2026-000001/);
   });
 
   it("shows the backend-issued Ticket Number on success", async () => {
