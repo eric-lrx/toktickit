@@ -36,9 +36,9 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | API-02 | API | AC-04, BR-12 | `POST /api/tickets` missing Summary | 400 naming `summary` | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
 | API-03 | API | BR-07 | `POST /api/tickets` missing `X-Dev-Requester-Id` | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
 | API-04 | API | AC-20, BR-21 | `POST /api/tickets` with inactive requester id | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-05 | API | AC-16, BR-15 | `POST /api/tickets` with a `.exe` attachment | 415 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-06 | API | AC-17, BR-15 | `POST /api/tickets` with a 6 MB file | 413 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-07 | API | BR-20 | Ticket write succeeds, forced attachment write failure | No Ticket row persisted; no temp file left on disk | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
+| API-05 | API | AC-16, BR-15 | `POST /api/tickets` with a `.exe` attachment | 415 | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
+| API-06 | API | AC-17, BR-15 | `POST /api/tickets` with a 6 MB file | 413 | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
+| API-07 | API | BR-20 | Ticket write succeeds, forced attachment write failure | No Ticket row persisted; no temp file left on disk | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
 | API-08 | API | AC-08 | `GET /api/tickets?search=<ticketNumber>` | Only the matching Ticket returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
 | API-09 | API | AC-09 | Combined `categoryId`+`relatedSystemId`+`requestedPriority` filters | Only Tickets matching all filters returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
 | API-10 | API | AC-10 | `sort=ticketNumber&order=asc` | Correctly ordered; stable `id desc` secondary sort | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
@@ -167,3 +167,9 @@ align-items-md-center mt-md-0`; re-verified the exact repro (open mobile menu at
   installed in Issue 12; until then they are planned, not run.
 - Current Status transitions, IT Priority, and Ticket Owner are out of scope (see
   `specification.md` §3 and §11) and therefore have no tests in this plan.
+- API-05/06/07 (attachment type/size validation and the compensation strategy on
+  Ticket creation) require the `Attachment` model and upload plumbing, which is
+  Issue 11's scope, not Issue 8's (the Issue table separates "Create Ticket" from
+  "Attachment lifecycle" and does not list attachments under Issue 8). Issue 8
+  implements Ticket creation with its non-file fields only; these three rows run
+  once Issue 11 lands.
