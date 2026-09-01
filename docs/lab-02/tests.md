@@ -18,6 +18,9 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 - **Responsive** and **E2E** run under Playwright, introduced in Issue 12
   (`feature/12-e2e-and-visual`); an extra `responsive.spec.ts` is added alongside the
   required `requester-ticket-flow.spec.ts` for the same reason as UI style above.
+- Reference data and the Development Requester Selector (Issue 6) have no dedicated
+  file in the handout's minimum structure either. Added: `server/tests/lab-02/
+  requester-context.api.test.ts` and `client/tests/lab-02/RequesterSelector.test.tsx`.
 - Every Acceptance Criterion in `specification.md` maps to at least one row below.
 
 ## 2. Planned Tests
@@ -47,6 +50,13 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | API-19 | API | AC-15, BR-19 | Download after soft-removal | 404 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
 | API-20 | API | BR-18 | `DELETE` attachment without `reason` | 400 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
 | API-21 | API | BR-10 | Download/soft-remove an attachment owned by another Requester | 404 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+| API-22 | API | BR-21 | `GET /api/requesters` | Seeded inactive Requester is excluded from the list | `server/tests/lab-02/requester-context.api.test.ts` | Pass |
+| API-23 | API | FR-01 | `GET /api/categories` | Returns only active categories | `server/tests/lab-02/requester-context.api.test.ts` | Pass |
+| API-24 | API | FR-01 | `GET /api/related-systems` | Returns the ≥6 seeded active related systems | `server/tests/lab-02/requester-context.api.test.ts` | Pass |
+| UI-11 | UI | ui-spec §4.1 | Requester Selector loading state | Loading indicator shown while `/api/requesters` is pending | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
+| UI-12 | UI | ui-spec §4.1 | Requester Selector empty state | Empty message shown when no active Requester exists | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
+| UI-13 | UI | ui-spec §4.1 | Requester Selector failure state | Safe error/retry shown on fetch failure | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
+| UI-14 | UI | FR-01 | Continue button and selection | Disabled with no selection; selecting a Requester persists it and enables Continue | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
 | UI-01 | UI | AC-04 | Submit with empty Summary | Inline field error; no `fetch` call made | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
 | UI-02 | UI | BR-13 | Submit button while request is pending | Busy + `disabled` | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
 | UI-03 | UI | AC-01 | Successful submit | Ticket Number from the mocked response is rendered | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
@@ -107,9 +117,23 @@ npx playwright test          # from e2e/, added in Issue 12
 
 ## 6. Final Results
 
-Not yet run — this plan predates implementation. Populated incrementally as each
-Issue's PR lands, and finalized in Issue 12 (`feature/12-e2e-and-visual`) with full
-`main`-branch output.
+Populated incrementally as each Issue's PR lands, and finalized in Issue 12
+(`feature/12-e2e-and-visual`) with full `main`-branch output.
+
+### Issue 6 — Reference data and Development Requester context
+
+```
+server: tests/lab-01/health.test.ts (1), tests/lab-01/categories.test.ts (1),
+        tests/lab-02/requester-context.api.test.ts (3) — 5 passed (5)
+client: tests/lab-01/App.test.tsx (3), tests/lab-02/RequesterSelector.test.tsx (4)
+        — 7 passed (7)
+```
+
+Manually verified: migration `20260901063527_lab2_requester_context` applied
+cleanly; seed replayed twice, row counts unchanged (4 categories, 7 related
+systems, 5 requesters — 4 active + 1 inactive); dev server and client start and
+serve real data end to end (Selector → Continue → Change Requester cycle checked
+in the running app, not just in tests).
 
 ## 7. Known Limitations or Deferred Tests
 
