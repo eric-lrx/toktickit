@@ -1,35 +1,58 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import RequesterSelector, { REQUESTER_STORAGE_KEY } from "./RequesterSelector.js";
+import Shell from "./Shell.js";
+import { getActiveRequesters, Requester } from "./api.js";
 
 function getStoredRequesterId(): number | null {
   const raw = localStorage.getItem(REQUESTER_STORAGE_KEY);
   return raw ? Number(raw) : null;
 }
 
+// Placeholder screens until their own Issue lands (8: Create Ticket, 9: My
+// Tickets, 10: Ticket Detail). Keeps the shell's routing demonstrable now.
+function ComingSoon({ label }: { label: string }) {
+  return <p className="text-muted">{label} lands in a later Issue.</p>;
+}
+
 // Issue 6 — gates the app behind the Development Requester Selector (BR-03).
-// Ticket screens (Create Ticket, My Tickets, Ticket Detail) land in later Issues;
-// this placeholder just proves the context + Change Requester behavior end to end.
+// Issue 7 — wraps the selected Requester in the Zen Green shell + routing.
 export default function AppRoot() {
   const [requesterId, setRequesterId] = useState<number | null>(getStoredRequesterId());
+  const [requester, setRequester] = useState<Requester | null>(null);
 
-  function handleChangeRequester() {
-    localStorage.removeItem(REQUESTER_STORAGE_KEY);
-    setRequesterId(null);
-  }
+  useEffect(() => {
+    if (requesterId === null) {
+      setRequester(null);
+      return;
+    }
+    let cancelled = false;
+    getActiveRequesters().then((list) => {
+      if (!cancelled) setRequester(list.find((r) => r.id === requesterId) ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [requesterId]);
 
   if (requesterId === null) {
     return <RequesterSelector onSelect={setRequesterId} />;
   }
 
+  if (!requester) {
+    return <p className="text-muted p-4">Loading…</p>;
+  }
+
   return (
-    <div className="container py-5" style={{ maxWidth: 640 }}>
-      <p>Development Requester #{requesterId} selected.</p>
-      <button className="btn btn-outline-secondary btn-sm" onClick={handleChangeRequester}>
-        Change Requester
-      </button>
-      <p className="text-muted mt-3">
-        Ticket screens (Create Ticket, My Tickets, Ticket Detail) land in later Issues.
-      </p>
-    </div>
+    <BrowserRouter>
+      <Shell requester={requester} onChangeRequester={() => setRequesterId(null)}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/tickets" replace />} />
+          <Route path="/tickets" element={<ComingSoon label="My Tickets" />} />
+          <Route path="/tickets/new" element={<ComingSoon label="Create Ticket" />} />
+          <Route path="/tickets/:id" element={<ComingSoon label="Ticket Detail" />} />
+        </Routes>
+      </Shell>
+    </BrowserRouter>
   );
 }
