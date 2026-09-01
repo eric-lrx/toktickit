@@ -1,0 +1,52 @@
+/* Zen Green design tokens — see docs/lab-02/ui-spec.md §1. Every component must
+   reference these variables, never a hardcoded hex. */
+:root {
+  --zg-primary: #006b3c;
+  --zg-secondary: #0b7a46;
+  --zg-pale: #eaf6ef;
+  --zg-bg: #f5f7f6;
+  --zg-surface: #ffffff;
+  --zg-surface-border: #dde5e1;
+  --zg-text: #1e2b25;
+  --zg-field-bg: #ffffff;
+  --zg-field-border: #c7d2cc;
+  --zg-readonly-bg: #f1efe6;
+  --zg-error: #8a1f1f;
+  --zg-warning-text: #a66a00;
+  --zg-warning-bg: #fcefd1;
+  --zg-success: #0b7a46;
+}
+
+body {
+  background: var(--zg-bg);
+  color: var(--zg-text);
+}
+
+/* Badge tones — ui-spec.md §5. */
+[class^="badge-"] {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.badge-neutral {
+  background: var(--zg-readonly-bg);
+  color: var(--zg-text);
+}
+.badge-pale {
+  background: var(--zg-pale);
+  color: var(--zg-secondary);
+}
+.badge-warning {
+  background: var(--zg-warning-bg);
+  color: var(--zg-warning-text);
+}
+.badge-danger {
+  background: #f7e3e3;
+  color: var(--zg-error);
+}
+.badge-success {
+  background: var(--zg-pale);
+  color: var(--zg-success);
+}

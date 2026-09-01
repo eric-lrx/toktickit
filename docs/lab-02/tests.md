@@ -21,6 +21,9 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 - Reference data and the Development Requester Selector (Issue 6) have no dedicated
   file in the handout's minimum structure either. Added: `server/tests/lab-02/
   requester-context.api.test.ts` and `client/tests/lab-02/RequesterSelector.test.tsx`.
+- The application shell and reusable components (Issue 7) are likewise untested by
+  the minimum file list. Added: `client/tests/lab-02/AppShell.test.tsx`; the shared
+  `Badge`/`FormField` components are covered inside `zen-green.style.test.tsx`.
 - Every Acceptance Criterion in `specification.md` maps to at least one row below.
 
 ## 2. Planned Tests
@@ -57,6 +60,12 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | UI-12 | UI | ui-spec §4.1 | Requester Selector empty state | Empty message shown when no active Requester exists | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
 | UI-13 | UI | ui-spec §4.1 | Requester Selector failure state | Safe error/retry shown on fetch failure | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
 | UI-14 | UI | FR-01 | Continue button and selection | Disabled with no selection; selecting a Requester persists it and enables Continue | `client/tests/lab-02/RequesterSelector.test.tsx` | Pass |
+| UI-16 | UI | ui-spec §4.2 | Shell identity and nav | Renders TokTickIT identity, My Tickets and Create Ticket nav links | `client/tests/lab-02/AppShell.test.tsx` | Pass |
+| UI-17 | UI | ui-spec §4.2 | Active nav indication | Current route's nav link has `aria-current="page"` | `client/tests/lab-02/AppShell.test.tsx` | Pass |
+| UI-18 | UI | ui-spec §4.2 | Requester identity and Change Requester | Selected Requester's name shown; Change Requester clears context and returns to the Selector | `client/tests/lab-02/AppShell.test.tsx` | Pass |
+| UI-19 | UI | ui-spec §6 | Mobile nav toggle | Nav links hidden behind a toggle below 768px, reachable via the toggle button | `client/tests/lab-02/AppShell.test.tsx` | Pass |
+| STYLE-04 | UI Style | ui-spec §5 | Badge tone classes | `Badge` renders the CSS class matching its `tone` prop | `client/tests/lab-02/zen-green.style.test.tsx` | Pass |
+| STYLE-05 | UI Style | ui-spec §3 | FormField required marker and error placement | Asterisk shown for required fields; error message renders immediately under the control | `client/tests/lab-02/zen-green.style.test.tsx` | Pass |
 | UI-01 | UI | AC-04 | Submit with empty Summary | Inline field error; no `fetch` call made | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
 | UI-02 | UI | BR-13 | Submit button while request is pending | Busy + `disabled` | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
 | UI-03 | UI | AC-01 | Successful submit | Ticket Number from the mocked response is rendered | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
@@ -134,6 +143,23 @@ cleanly; seed replayed twice, row counts unchanged (4 categories, 7 related
 systems, 5 requesters — 4 active + 1 inactive); dev server and client start and
 serve real data end to end (Selector → Continue → Change Requester cycle checked
 in the running app, not just in tests).
+
+### Issue 7 — Application shell and Zen Green foundation
+
+```
+client: tests/lab-01/App.test.tsx (3), tests/lab-02/RequesterSelector.test.tsx (4),
+        tests/lab-02/AppShell.test.tsx (4), tests/lab-02/zen-green.style.test.tsx (5)
+        — 16 passed (16)
+server: unchanged — 5 passed (5)
+```
+
+Manually verified in the running app, not just under jsdom: real-viewport resize
+(desktop 1400px → mobile 390px → back to desktop) caught and fixed a genuine bug
+— the mobile nav's open state leaked `flex-column`/`align-items-start` into the
+desktop layout when `mobileOpen` stayed `true` across a resize, since those
+classes had no `-md-` reset variant. Fixed with `flex-md-row
+align-items-md-center mt-md-0`; re-verified the exact repro (open mobile menu at
+390px, then resize to 1400px without reloading) no longer overlaps or wraps.
 
 ## 7. Known Limitations or Deferred Tests
 
