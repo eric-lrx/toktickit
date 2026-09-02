@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+import { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import { requireActiveRequester, RequesterRequest } from "./requesterAuth.js";
 import { nextTicketNumber, withUniqueTicketNumber } from "./ticketNumber.js";
@@ -145,6 +146,95 @@ app.post("/api/tickets", requireActiveRequester, async (req: RequesterRequest, r
     res.status(201).json({ data: ticket });
   } catch {
     res.status(500).json({ error: { message: "Unable to create ticket" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Issue 9 — My Tickets: search, filter, sort, paginate the current
+// Requester's own Tickets. Always scoped server-side (BR-11) — the frontend
+// never receives another Requester's rows to filter out.
+// `attachmentCount` is deferred to Issue 11 (no Attachment model yet).
+// ---------------------------------------------------------------------------
+const SORT_FIELDS = ["createdAt", "ticketNumber", "summary"] as const;
+const ORDERS = ["asc", "desc"] as const;
+const PAGE_SIZES = [10, 20, 50];
+
+app.get("/api/tickets", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+  const sort = (req.query.sort as string) ?? "createdAt";
+  const order = (req.query.order as string) ?? "desc";
+  const pageRaw = req.query.page !== undefined ? Number(req.query.page) : 1;
+  const pageSizeRaw = req.query.pageSize !== undefined ? Number(req.query.pageSize) : 10;
+
+  if (!SORT_FIELDS.includes(sort as (typeof SORT_FIELDS)[number])) {
+    res.status(400).json({ error: { message: `invalid sort: '${sort}'` } });
+    return;
+  }
+  if (!ORDERS.includes(order as (typeof ORDERS)[number])) {
+    res.status(400).json({ error: { message: `invalid order: '${order}'` } });
+    return;
+  }
+  if (!Number.isInteger(pageRaw) || pageRaw < 1) {
+    res.status(400).json({ error: { message: `invalid page: '${req.query.page}'` } });
+    return;
+  }
+  if (!PAGE_SIZES.includes(pageSizeRaw)) {
+    res.status(400).json({ error: { message: `invalid pageSize: '${req.query.pageSize}'` } });
+    return;
+  }
+
+  const where: Prisma.TicketWhereInput = { requesterId: req.requesterId! };
+
+  const search = req.query.search;
+  if (typeof search === "string" && search.trim()) {
+    const term = search.trim();
+    where.OR = [
+      { ticketNumber: { contains: term, mode: "insensitive" } },
+      { summary: { contains: term, mode: "insensitive" } },
+    ];
+  }
+
+  if (req.query.categoryId !== undefined) {
+    const id = Number(req.query.categoryId);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: { message: `invalid categoryId: '${req.query.categoryId}'` } });
+      return;
+    }
+    where.categoryId = id;
+  }
+
+  if (req.query.relatedSystemId !== undefined) {
+    const id = Number(req.query.relatedSystemId);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: { message: `invalid relatedSystemId: '${req.query.relatedSystemId}'` } });
+      return;
+    }
+    where.relatedSystemId = id;
+  }
+
+  if (req.query.requestedPriority !== undefined) {
+    if (!PRIORITIES.includes(req.query.requestedPriority as string)) {
+      res.status(400).json({ error: { message: `invalid requestedPriority: '${req.query.requestedPriority}'` } });
+      return;
+    }
+    where.requestedPriority = req.query.requestedPriority as "LOW" | "MEDIUM" | "HIGH";
+  }
+
+  try {
+    const [total, tickets] = await Promise.all([
+      getPrisma().ticket.count({ where }),
+      getPrisma().ticket.findMany({
+        where,
+        orderBy: [{ [sort]: order } as Prisma.TicketOrderByWithRelationInput, { id: "desc" }],
+        skip: (pageRaw - 1) * pageSizeRaw,
+        take: pageSizeRaw,
+      }),
+    ]);
+    res.status(200).json({
+      data: tickets,
+      meta: { page: pageRaw, pageSize: pageSizeRaw, total, totalPages: Math.ceil(total / pageSizeRaw) },
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load tickets" } });
   }
 });
 
