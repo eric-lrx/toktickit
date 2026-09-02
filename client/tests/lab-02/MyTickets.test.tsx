@@ -59,7 +59,10 @@ describe("MyTickets", () => {
       meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
     });
     const { rerender } = renderMyTickets(1);
-    expect(await screen.findByText("TKT-2026-000001")).toBeInTheDocument();
+    // Both the desktop table and mobile card render in jsdom at once (no real
+    // CSS media query evaluation), so the ticket number legitimately appears
+    // twice — that's the responsive markup, not a bug.
+    expect((await screen.findAllByText("TKT-2026-000001")).length).toBeGreaterThan(0);
 
     spy.mockResolvedValueOnce({ data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 } });
     rerender(
@@ -69,6 +72,6 @@ describe("MyTickets", () => {
     );
 
     expect(await screen.findByText(/create your first ticket/i)).toBeInTheDocument();
-    expect(screen.queryByText("TKT-2026-000001")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("TKT-2026-000001")).toHaveLength(0);
   });
 });

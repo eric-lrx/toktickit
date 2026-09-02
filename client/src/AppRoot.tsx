@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import RequesterSelector, { REQUESTER_STORAGE_KEY } from "./RequesterSelector.js";
 import Shell from "./Shell.js";
 import CreateTicket from "./CreateTicket.js";
+import MyTickets from "./MyTickets.js";
 import { getActiveRequesters, Requester } from "./api.js";
 
 function getStoredRequesterId(): number | null {
@@ -59,7 +60,7 @@ export default function AppRoot() {
       <Shell requester={requester} onChangeRequester={() => setRequesterId(null)}>
         <Routes>
           <Route path="/" element={<Navigate to="/tickets" replace />} />
-          <Route path="/tickets" element={<ComingSoon label="My Tickets" />} />
+          <Route path="/tickets" element={<MyTickets requesterId={requester.id} />} />
           <Route path="/tickets/new" element={<CreateTicket requesterId={requester.id} />} />
           <Route path="/tickets/:id" element={<ComingSoon label="Ticket Detail" />} />
         </Routes>

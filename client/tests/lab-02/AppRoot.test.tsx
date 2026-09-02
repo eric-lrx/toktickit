@@ -11,9 +11,10 @@ describe("AppRoot", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows the Development Requester Selector when no Requester is in context", () => {
+  it("shows the Development Requester Selector when no Requester is in context", async () => {
     vi.spyOn(api, "getActiveRequesters").mockResolvedValue([]);
     render(<AppRoot />);
     expect(screen.getByText(/select a development requester/i)).toBeInTheDocument();
+    await screen.findByText(/no active development requesters/i);
   });
 });

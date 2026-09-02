@@ -89,6 +89,51 @@ export async function createTicket(requesterId: number, input: CreateTicketInput
   return json.data;
 }
 
+// Issue 9 — My Tickets: search, filter, sort, paginate the current
+// Requester's own Tickets (always server-scoped by X-Dev-Requester-Id, BR-11).
+export interface MyTicketsQuery {
+  search?: string;
+  categoryId?: number;
+  relatedSystemId?: number;
+  requestedPriority?: RequestedPriority;
+  sort?: "createdAt" | "ticketNumber" | "summary";
+  order?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface MyTicketsResult {
+  data: Ticket[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+}
+
+export async function getMyTickets(requesterId: number, query: MyTicketsQuery): Promise<MyTicketsResult> {
+  const params = new URLSearchParams();
+  if (query.search) params.set("search", query.search);
+  if (query.categoryId !== undefined) params.set("categoryId", String(query.categoryId));
+  if (query.relatedSystemId !== undefined) params.set("relatedSystemId", String(query.relatedSystemId));
+  if (query.requestedPriority) params.set("requestedPriority", query.requestedPriority);
+  if (query.sort) params.set("sort", query.sort);
+  if (query.order) params.set("order", query.order);
+  params.set("page", String(query.page ?? 1));
+  params.set("pageSize", String(query.pageSize ?? 10));
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/tickets?${params.toString()}`, {
+      headers: { "X-Dev-Requester-Id": String(requesterId) },
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    console.error(`getMyTickets failed with status ${res.status}`);
+    throw new Error("Unable to load tickets. Please try again.");
+  }
+  return res.json();
+}
+
 export interface SystemStatus {
   online: boolean;
   categories: Category[];

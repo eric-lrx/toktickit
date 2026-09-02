@@ -9,6 +9,7 @@ let requesterAId: number;
 let requesterBId: number;
 let categoryId: number;
 let relatedSystemId: number;
+let otherRelatedSystemId: number;
 
 async function createTicket(requesterId: number, overrides: Record<string, unknown> = {}) {
   const res = await request(app)
@@ -31,9 +32,10 @@ beforeAll(async () => {
   requesterAId = activeRequesters[0].id;
   requesterBId = activeRequesters[1].id;
   const category = await prisma.category.findFirstOrThrow({ where: { isActive: true } });
-  const relatedSystem = await prisma.relatedSystem.findFirstOrThrow({ where: { isActive: true } });
+  const relatedSystems = await prisma.relatedSystem.findMany({ where: { isActive: true }, take: 2 });
   categoryId = category.id;
-  relatedSystemId = relatedSystem.id;
+  relatedSystemId = relatedSystems[0].id;
+  otherRelatedSystemId = relatedSystems[1].id;
 });
 
 describe("GET /api/tickets", () => {
@@ -55,6 +57,34 @@ describe("GET /api/tickets", () => {
       .set("X-Dev-Requester-Id", String(requesterAId));
     expect(res.status).toBe(200);
     expect(res.body.data.map((t: { id: number }) => t.id)).toEqual([ticket.id]);
+  });
+
+  it("returns only Tickets matching every applied filter together", async () => {
+    const fresh = await getPrisma().requesterUser.create({
+      data: { name: "Filter Test Requester", email: `filter-${Date.now()}@example.com`, isActive: true },
+    });
+    const matching = await createTicket(fresh.id, {
+      relatedSystemId: otherRelatedSystemId,
+      requestedPriority: "HIGH",
+      summary: "Matches every filter",
+    });
+    await createTicket(fresh.id, {
+      relatedSystemId: relatedSystemId, // wrong related system
+      requestedPriority: "HIGH",
+      summary: "Wrong related system",
+    });
+    await createTicket(fresh.id, {
+      relatedSystemId: otherRelatedSystemId,
+      requestedPriority: "LOW", // wrong priority
+      summary: "Wrong priority",
+    });
+
+    const res = await request(app)
+      .get(`/api/tickets?categoryId=${categoryId}&relatedSystemId=${otherRelatedSystemId}&requestedPriority=HIGH`)
+      .set("X-Dev-Requester-Id", String(fresh.id));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((t: { id: number }) => t.id)).toEqual([matching.id]);
   });
 
   it("sorts by ticketNumber ascending", async () => {
