@@ -24,6 +24,11 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 - The application shell and reusable components (Issue 7) are likewise untested by
   the minimum file list. Added: `client/tests/lab-02/AppShell.test.tsx`; the shared
   `Badge`/`FormField` components are covered inside `zen-green.style.test.tsx`.
+- UI-10 (AC-02, "no Requester in context") originally targeted
+  `MyTickets.test.tsx`, written before Issue 7's architecture existed. In the
+  implemented app, `AppRoot` gates every screen centrally — no individual
+  screen re-checks requester context — so UI-10 now targets a new
+  `client/tests/lab-02/AppRoot.test.tsx` instead.
 - Every Acceptance Criterion in `specification.md` maps to at least one row below.
 
 ## 2. Planned Tests
@@ -73,7 +78,7 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | UI-05 | UI | AC-16 | Select a disallowed file type | Per-file inline error; file not added to the upload list | `client/tests/lab-02/AttachmentSection.test.tsx` | Pending |
 | UI-06 | UI | AC-06, AC-07 | Empty vs. no-results states | Correct, distinct message rendered per case | `client/tests/lab-02/MyTickets.test.tsx` | Pending |
 | UI-07 | UI | AC-18 | Requester switch | Previous Requester's rows are removed from the DOM before new ones render | `client/tests/lab-02/MyTickets.test.tsx` | Pending |
-| UI-10 | UI | AC-02 | Render My Tickets with no Requester in context | Selection screen is shown instead of the list | `client/tests/lab-02/MyTickets.test.tsx` | Pending |
+| UI-10 | UI | AC-02 | Render the app with no Requester in context | Selector screen is shown | `client/tests/lab-02/AppRoot.test.tsx` | Pending |
 | UI-08 | UI | FR-10 | Ticket Detail read-only rendering | No editable inputs present in the ticket-info block | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Pending |
 | UI-09 | UI | BR-19 | Removed attachment row | Download control absent/disabled | `client/tests/lab-02/AttachmentSection.test.tsx` | Pending |
 | STYLE-01 | UI Style | ui-spec §3 | Required-field asterisk | Asterisk element present on every required field | `client/tests/lab-02/zen-green.style.test.tsx` | Pending |
