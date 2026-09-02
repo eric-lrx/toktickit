@@ -30,15 +30,15 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| UNIT-01 | Unit | BR-04 | Ticket number generator format | Matches `TKT-YYYY-NNNNNN` | `server/tests/lab-02/ticket-number.unit.test.ts` | Pending |
-| UNIT-02 | Unit | BR-04 | Retry after simulated unique-constraint collision | Second attempt succeeds with a different number | `server/tests/lab-02/ticket-number.unit.test.ts` | Pending |
-| API-01 | API | AC-01 | `POST /api/tickets` valid payload | 201; Ticket saved; ticketNumber returned | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-02 | API | AC-04, BR-12 | `POST /api/tickets` missing Summary | 400 naming `summary` | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-03 | API | BR-07 | `POST /api/tickets` missing `X-Dev-Requester-Id` | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-04 | API | AC-20, BR-21 | `POST /api/tickets` with inactive requester id | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-05 | API | AC-16, BR-15 | `POST /api/tickets` with a `.exe` attachment | 415 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-06 | API | AC-17, BR-15 | `POST /api/tickets` with a 6 MB file | 413 | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
-| API-07 | API | BR-20 | Ticket write succeeds, forced attachment write failure | No Ticket row persisted; no temp file left on disk | `server/tests/lab-02/create-ticket.api.test.ts` | Pending |
+| UNIT-01 | Unit | BR-04 | Ticket number generator format | Matches `TKT-YYYY-NNNNNN` | `server/tests/lab-02/ticket-number.unit.test.ts` | Pass |
+| UNIT-02 | Unit | BR-04 | Retry after simulated unique-constraint collision | Second attempt succeeds with a different number | `server/tests/lab-02/ticket-number.unit.test.ts` | Pass |
+| API-01 | API | AC-01 | `POST /api/tickets` valid payload | 201; Ticket saved; ticketNumber returned | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
+| API-02 | API | AC-04, BR-12 | `POST /api/tickets` missing Summary | 400 naming `summary` | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
+| API-03 | API | BR-07 | `POST /api/tickets` missing `X-Dev-Requester-Id` | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
+| API-04 | API | AC-20, BR-21 | `POST /api/tickets` with inactive requester id | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
+| API-05 | API | AC-16, BR-15 | `POST /api/tickets` with a `.exe` attachment | 415 | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
+| API-06 | API | AC-17, BR-15 | `POST /api/tickets` with a 6 MB file | 413 | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
+| API-07 | API | BR-20 | Ticket write succeeds, forced attachment write failure | No Ticket row persisted; no temp file left on disk | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
 | API-08 | API | AC-08 | `GET /api/tickets?search=<ticketNumber>` | Only the matching Ticket returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
 | API-09 | API | AC-09 | Combined `categoryId`+`relatedSystemId`+`requestedPriority` filters | Only Tickets matching all filters returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
 | API-10 | API | AC-10 | `sort=ticketNumber&order=asc` | Correctly ordered; stable `id desc` secondary sort | `server/tests/lab-02/my-tickets.api.test.ts` | Pending |
@@ -66,10 +66,10 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | UI-19 | UI | ui-spec §6 | Mobile nav toggle | Nav links hidden behind a toggle below 768px, reachable via the toggle button | `client/tests/lab-02/AppShell.test.tsx` | Pass |
 | STYLE-04 | UI Style | ui-spec §5 | Badge tone classes | `Badge` renders the CSS class matching its `tone` prop | `client/tests/lab-02/zen-green.style.test.tsx` | Pass |
 | STYLE-05 | UI Style | ui-spec §3 | FormField required marker and error placement | Asterisk shown for required fields; error message renders immediately under the control | `client/tests/lab-02/zen-green.style.test.tsx` | Pass |
-| UI-01 | UI | AC-04 | Submit with empty Summary | Inline field error; no `fetch` call made | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
-| UI-02 | UI | BR-13 | Submit button while request is pending | Busy + `disabled` | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
-| UI-03 | UI | AC-01 | Successful submit | Ticket Number from the mocked response is rendered | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
-| UI-04 | UI | AC-05 | Submit with a mocked network failure | Error shown; all field values still present | `client/tests/lab-02/CreateTicket.test.tsx` | Pending |
+| UI-01 | UI | AC-04 | Submit with empty Summary | Inline field error; no `fetch` call made | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
+| UI-02 | UI | BR-13 | Submit button while request is pending | Busy + `disabled` | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
+| UI-03 | UI | AC-01 | Successful submit | Ticket Number from the mocked response is rendered | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
+| UI-04 | UI | AC-05 | Submit with a mocked network failure | Error shown; all field values still present | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
 | UI-05 | UI | AC-16 | Select a disallowed file type | Per-file inline error; file not added to the upload list | `client/tests/lab-02/AttachmentSection.test.tsx` | Pending |
 | UI-06 | UI | AC-06, AC-07 | Empty vs. no-results states | Correct, distinct message rendered per case | `client/tests/lab-02/MyTickets.test.tsx` | Pending |
 | UI-07 | UI | AC-18 | Requester switch | Previous Requester's rows are removed from the DOM before new ones render | `client/tests/lab-02/MyTickets.test.tsx` | Pending |
@@ -161,9 +161,56 @@ classes had no `-md-` reset variant. Fixed with `flex-md-row
 align-items-md-center mt-md-0`; re-verified the exact repro (open mobile menu at
 390px, then resize to 1400px without reloading) no longer overlaps or wraps.
 
+### Issue 8 — Create Ticket
+
+```
+server: tests/lab-01/health.test.ts (1), tests/lab-01/categories.test.ts (1),
+        tests/lab-02/requester-context.api.test.ts (3),
+        tests/lab-02/ticket-number.unit.test.ts (3),
+        tests/lab-02/create-ticket.api.test.ts (4) — 12 passed (12)
+client: tests/lab-01/App.test.tsx (3), tests/lab-02/RequesterSelector.test.tsx (4),
+        tests/lab-02/AppShell.test.tsx (4), tests/lab-02/zen-green.style.test.tsx (5),
+        tests/lab-02/CreateTicket.test.tsx (4) — 20 passed (20)
+```
+
+Attachments (API-05/06/07) are deferred to Issue 11 — see §7.
+
+Manually verified end to end against the real running app and database, not
+just mocked tests: created a real Ticket through the browser as Ada Lovelace,
+confirmed via `psql` that the saved row's `requesterId` matched the selected
+Requester and the row's `categoryId`/`relatedSystemId` matched the form
+selections; confirmed sequential `ticketNumber`s (`TKT-2026-000001` …
+`-000004`) across both API-test-created and UI-created tickets; confirmed
+missing/inactive-requester header returns 400 against the live server.
+
+Two real bugs found and fixed during this manual pass (neither caught by the
+mocked unit/component tests, since those tests mock the failure rather than
+trigger a real one):
+
+1. **Raw browser error leaking to the UI.** Killing the server and submitting
+   showed the literal string "Failed to fetch" — the same anti-pattern
+   `checkSystem()` was criticized for in Lab 1 peer review. Fixed in
+   `createTicket()` (`api.ts`): network and non-ok failures are now mapped to
+   one safe message, with the real detail going to `console.error` only.
+   Re-verified: killing the server and submitting a filled, valid form now
+   shows "Unable to reach the server. Please try again." with every field
+   value still present.
+2. **Permanent stuck "Loading…" with no way out.** `AppRoot`'s effect that
+   resolves the selected Requester's name had no `.catch()`; if that fetch
+   failed, the shell never rendered and there was no failure state or escape
+   route. Fixed by falling back to the Selector screen (clearing the stored
+   Requester id) on failure, reusing its already-tested loading/empty/failure
+   states instead of inventing a new one.
+
 ## 7. Known Limitations or Deferred Tests
 
 - Responsive (`RESP-*`) and E2E (`E2E-*`) rows cannot execute until Playwright is
   installed in Issue 12; until then they are planned, not run.
 - Current Status transitions, IT Priority, and Ticket Owner are out of scope (see
   `specification.md` §3 and §11) and therefore have no tests in this plan.
+- API-05/06/07 (attachment type/size validation and the compensation strategy on
+  Ticket creation) require the `Attachment` model and upload plumbing, which is
+  Issue 11's scope, not Issue 8's (the Issue table separates "Create Ticket" from
+  "Attachment lifecycle" and does not list attachments under Issue 8). Issue 8
+  implements Ticket creation with its non-file fields only; these three rows run
+  once Issue 11 lands.
