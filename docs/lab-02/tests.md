@@ -84,12 +84,12 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | STYLE-01 | UI Style | ui-spec §3 | Required-field asterisk | Asterisk element present on every required field | `client/tests/lab-02/zen-green.style.test.tsx` | Pending |
 | STYLE-02 | UI Style | ui-spec §3 | Disabled/busy submit button | Correct class/attribute while submitting | `client/tests/lab-02/zen-green.style.test.tsx` | Pending |
 | STYLE-03 | UI Style | ui-spec §5 | Priority/status badge classes | Badge class matches the documented token mapping | `client/tests/lab-02/zen-green.style.test.tsx` | Pending |
-| RESP-01 | Responsive | ui-spec §6 | My Tickets at desktop width | Table layout renders | `e2e/lab-02/responsive.spec.ts` | Pending |
-| RESP-02 | Responsive | AC-19, ui-spec §6 | My Tickets at mobile width | Card layout; `scrollWidth <= clientWidth` (no horizontal scroll) | `e2e/lab-02/responsive.spec.ts` | Pending |
-| RESP-03 | Responsive | ui-spec §6 | Create Ticket at tablet width | Two-column classification group | `e2e/lab-02/responsive.spec.ts` | Pending |
-| E2E-01 | E2E | AC-01 | Full create-ticket flow with one attachment | Confirmation shows the official Ticket Number; Ticket later found in My Tickets | `e2e/lab-02/requester-ticket-flow.spec.ts` | Pending |
-| E2E-02 | E2E | AC-18 | Switch Requester mid-session | Requester A's Ticket is not visible after switching to Requester B | `e2e/lab-02/requester-ticket-flow.spec.ts` | Pending |
-| E2E-03 | E2E | AC-15 | Add, download, then soft-remove an attachment | Download is blocked after removal; metadata still shown | `e2e/lab-02/requester-ticket-flow.spec.ts` | Pending |
+| RESP-01 | Responsive | ui-spec §6 | My Tickets at desktop width | Table layout renders | `e2e/lab-02/responsive.spec.ts` | Pass |
+| RESP-02 | Responsive | AC-19, ui-spec §6 | My Tickets at mobile width | Card layout; `scrollWidth <= clientWidth` (no horizontal scroll) | `e2e/lab-02/responsive.spec.ts` | Pass |
+| RESP-03 | Responsive | ui-spec §6 | Create Ticket at tablet width | Two-column classification group | `e2e/lab-02/responsive.spec.ts` | Pass |
+| E2E-01 | E2E | AC-01 | Full create-ticket flow with one attachment | Confirmation shows the official Ticket Number; Ticket later found in My Tickets | `e2e/lab-02/requester-ticket-flow.spec.ts` | Pass |
+| E2E-02 | E2E | AC-18 | Switch Requester mid-session | Requester A's Ticket is not visible after switching to Requester B | `e2e/lab-02/requester-ticket-flow.spec.ts` | Pass |
+| E2E-03 | E2E | AC-15 | Add, download, then soft-remove an attachment | Download is blocked after removal; metadata still shown | `e2e/lab-02/requester-ticket-flow.spec.ts` | Pass |
 
 ## 3. Acceptance-Criterion Traceability
 
@@ -126,7 +126,7 @@ Not yet executed — no implementation exists.
 ```bash
 cd server && npm test
 cd client && npm test
-npx playwright test          # from e2e/, added in Issue 12
+npx playwright test          # from the repo root (playwright.config.ts), Issue 12
 ```
 
 ## 6. Final Results
@@ -310,10 +310,52 @@ Two small fixes made during this pass:
    (the section `<h3>` and `AttachmentSection`'s own `<label>` both said
    "Attachments") — cosmetic, caught by eye during manual verification.
 
+### Issue 12 — E2E, visual inspection and release
+
+```
+server: unchanged — 38 passed (38)
+client: unchanged — 29 passed (29)
+e2e (Playwright, real dev server + real Postgres): 7 passed (7)
+  - e2e/lab-02/requester-ticket-flow.spec.ts (3): E2E-01/02/03
+  - e2e/lab-02/responsive.spec.ts (4): RESP-01/02/03 + one extra
+    (Ticket Detail screenshot, not a formally planned row — added for
+    artifacts/lab-02/screenshots/ticket-detail/ completeness)
+```
+
+Playwright was genuinely new for this project (excluded from Lab 1). Getting
+from 0 to 7 green E2E tests surfaced real, previously-invisible bugs — this
+is exactly what Test DD's "don't accept done without evidence" is for:
+
+1. **RESP-03 didn't match the implementation.** The original test plan
+   (written in Issue 5, before Create Ticket existed) assumed a two-column
+   tablet layout for Category/Related System/Requested Priority. The actual
+   Issue 8 implementation was a single column at every width — a real gap
+   between `ui-spec.md` §6 ("two-column where practical") and what shipped.
+   Fixed properly (`col-md-4` row, `client/src/CreateTicket.tsx`) rather than
+   weakening the test to match the gap; re-verified visually in
+   `artifacts/lab-02/screenshots/create-ticket/tablet.png`.
+2. **The mobile nav doesn't close after navigating.** Found because the
+   first `my-tickets/mobile.png` screenshot showed the hamburger menu still
+   expanded after clicking "My Tickets" — `Shell.tsx` never reset
+   `mobileOpen` on navigation. Fixed (`onClick={() => setMobileOpen(false)}`
+   on both `NavLink`s); re-verified the screenshot is now clean.
+3. **Two Playwright authoring mistakes, not app bugs** (documented so the
+   distinction is traceable): "Create Ticket" legitimately appears twice on
+   My Tickets (nav link + toolbar CTA, both required by `ui-spec.md` §4.4) —
+   tests must scope to the nav landmark, not query by name alone. And the
+   collapsed mobile `<nav>` is `display:none` until opened, which removes it
+   from the accessibility tree entirely — a role-based locator can't even be
+   used to *check* `data-mobile-open` before toggling it; a plain CSS
+   locator (`page.locator('nav[aria-label="Main"]')`) can. Both fixed in the
+   shared `e2e/lab-02/helpers.ts`.
+
+`ui-spec.md` §8's visual checklist is now fully completed with real
+evidence (screenshots + a live CSS-token diff against `theme.css`), not
+checked from memory.
+
 ## 7. Known Limitations or Deferred Tests
 
-- Responsive (`RESP-*`) and E2E (`E2E-*`) rows cannot execute until Playwright is
-  installed in Issue 12; until then they are planned, not run.
+- Responsive (`RESP-*`) and E2E (`E2E-*`) rows ran for real as of Issue 12 — see §6.
 - Current Status transitions, IT Priority, and Ticket Owner are out of scope (see
   `specification.md` §3 and §11) and therefore have no tests in this plan.
 - API-05/06/07 were deferred during Issue 8 (no `Attachment` model existed yet)

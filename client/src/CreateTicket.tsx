@@ -85,55 +85,65 @@ export default function CreateTicket({ requesterId }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate style={{ maxWidth: 560 }}>
+    <form onSubmit={handleSubmit} noValidate style={{ maxWidth: 720 }}>
       <p className="text-muted small">
         Ticket Date and Ticket Number are assigned by the system after submission.
       </p>
 
-      <FormField id="category" label="Category" required error={errors.categoryId}>
-        <select
-          id="category"
-          className="form-select"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          <option value="">Choose a category…</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </FormField>
+      {/* ui-spec.md §6 — two-column classification group at tablet/desktop
+          (col-md-4), stacked single-column on mobile (Bootstrap default). */}
+      <div className="row">
+        <div className="col-md-4">
+          <FormField id="category" label="Category" required error={errors.categoryId}>
+            <select
+              id="category"
+              className="form-select"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="">Choose a category…</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </div>
 
-      <FormField id="relatedSystem" label="Related System" required error={errors.relatedSystemId}>
-        <select
-          id="relatedSystem"
-          className="form-select"
-          value={relatedSystemId}
-          onChange={(e) => setRelatedSystemId(e.target.value)}
-        >
-          <option value="">Choose a related system…</option>
-          {relatedSystems.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-      </FormField>
+        <div className="col-md-4">
+          <FormField id="relatedSystem" label="Related System" required error={errors.relatedSystemId}>
+            <select
+              id="relatedSystem"
+              className="form-select"
+              value={relatedSystemId}
+              onChange={(e) => setRelatedSystemId(e.target.value)}
+            >
+              <option value="">Choose a related system…</option>
+              {relatedSystems.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </div>
 
-      <FormField id="requestedPriority" label="Requested Priority" required>
-        <select
-          id="requestedPriority"
-          className="form-select"
-          value={requestedPriority}
-          onChange={(e) => setRequestedPriority(e.target.value as RequestedPriority)}
-        >
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
-        </select>
-      </FormField>
+        <div className="col-md-4">
+          <FormField id="requestedPriority" label="Requested Priority" required>
+            <select
+              id="requestedPriority"
+              className="form-select"
+              value={requestedPriority}
+              onChange={(e) => setRequestedPriority(e.target.value as RequestedPriority)}
+            >
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+            </select>
+          </FormField>
+        </div>
+      </div>
 
       <FormField id="summary" label="Summary" required error={errors.summary}>
         <input
