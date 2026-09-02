@@ -4,17 +4,12 @@ import RequesterSelector, { REQUESTER_STORAGE_KEY } from "./RequesterSelector.js
 import Shell from "./Shell.js";
 import CreateTicket from "./CreateTicket.js";
 import MyTickets from "./MyTickets.js";
+import RequesterTicketDetail from "./RequesterTicketDetail.js";
 import { getActiveRequesters, Requester } from "./api.js";
 
 function getStoredRequesterId(): number | null {
   const raw = localStorage.getItem(REQUESTER_STORAGE_KEY);
   return raw ? Number(raw) : null;
-}
-
-// Placeholder screens until their own Issue lands (8: Create Ticket, 9: My
-// Tickets, 10: Ticket Detail). Keeps the shell's routing demonstrable now.
-function ComingSoon({ label }: { label: string }) {
-  return <p className="text-muted">{label} lands in a later Issue.</p>;
 }
 
 // Issue 6 — gates the app behind the Development Requester Selector (BR-03).
@@ -62,7 +57,7 @@ export default function AppRoot() {
           <Route path="/" element={<Navigate to="/tickets" replace />} />
           <Route path="/tickets" element={<MyTickets requesterId={requester.id} />} />
           <Route path="/tickets/new" element={<CreateTicket requesterId={requester.id} />} />
-          <Route path="/tickets/:id" element={<ComingSoon label="Ticket Detail" />} />
+          <Route path="/tickets/:id" element={<RequesterTicketDetail requesterId={requester.id} />} />
         </Routes>
       </Shell>
     </BrowserRouter>

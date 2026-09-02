@@ -238,4 +238,30 @@ app.get("/api/tickets", requireActiveRequester, async (req: RequesterRequest, re
   }
 });
 
+// ---------------------------------------------------------------------------
+// Issue 10 — Requester Ticket Detail, read-only. 404 (never 403) when the
+// Ticket doesn't exist or isn't owned by the current Requester (BR-10):
+// a 403 would confirm the resource exists under someone else.
+// `attachments` is a real (empty) array — the Attachment model lands in
+// Issue 11, so every Ticket honestly has none yet.
+// ---------------------------------------------------------------------------
+app.get("/api/tickets/:id", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  try {
+    const ticket = await getPrisma().ticket.findUnique({ where: { id } });
+    if (!ticket || ticket.requesterId !== req.requesterId) {
+      res.status(404).json({ error: { message: "Ticket not found" } });
+      return;
+    }
+    res.status(200).json({ data: { ...ticket, attachments: [] } });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load ticket" } });
+  }
+});
+
 export default app;
