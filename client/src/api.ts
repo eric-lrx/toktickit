@@ -76,28 +76,64 @@ export interface CreateTicketInput {
   requestedPriority: RequestedPriority;
 }
 
+// Reads a safe, server-crafted error message (api-spec.md's error.message —
+// intentional and safe to show, unlike a raw browser/network string) for a
+// non-2xx response. 500s are never trusted verbatim (safe unexpected-error
+// behavior) — only 4xx bodies, which this API always writes itself.
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+  if (res.status >= 500) return fallback;
+  try {
+    const body = await res.json();
+    if (typeof body?.error?.message === "string") return body.error.message;
+  } catch {
+    // fall through to the generic fallback
+  }
+  return fallback;
+}
+
 // Issue 8 — POST /api/tickets. requesterId goes in the header, never the body
 // (api-spec.md), since ownership always comes from X-Dev-Requester-Id.
+// Issue 11 — optional attachments switch the request to multipart/form-data;
+// with none, it stays plain JSON (unchanged from Issue 8).
 //
-// Network/parse errors and non-ok responses are both mapped to one safe,
-// user-facing message; the real detail goes to console.error only — the same
-// leak (raw "Failed to fetch" reaching the UI) was flagged on Lab 1's
-// checkSystem() and is worth not repeating here.
-export async function createTicket(requesterId: number, input: CreateTicketInput): Promise<Ticket> {
+// Network/parse errors are mapped to one safe, user-facing message; the real
+// detail goes to console.error only — the same leak (raw "Failed to fetch"
+// reaching the UI) was flagged on Lab 1's checkSystem() and is worth not
+// repeating here.
+export async function createTicket(
+  requesterId: number,
+  input: CreateTicketInput,
+  files: File[] = []
+): Promise<TicketDetail> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/tickets`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Dev-Requester-Id": String(requesterId) },
-      body: JSON.stringify(input),
-    });
+    if (files.length > 0) {
+      const formData = new FormData();
+      formData.set("categoryId", String(input.categoryId));
+      formData.set("relatedSystemId", String(input.relatedSystemId));
+      formData.set("summary", input.summary);
+      formData.set("description", input.description);
+      formData.set("requestedPriority", input.requestedPriority);
+      files.forEach((f) => formData.append("attachments", f));
+      res = await fetch(`${API_URL}/api/tickets`, {
+        method: "POST",
+        headers: { "X-Dev-Requester-Id": String(requesterId) },
+        body: formData,
+      });
+    } else {
+      res = await fetch(`${API_URL}/api/tickets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Dev-Requester-Id": String(requesterId) },
+        body: JSON.stringify(input),
+      });
+    }
   } catch (err) {
     console.error(err);
     throw new Error("Unable to reach the server. Please try again.");
   }
   if (!res.ok) {
-    console.error(`createTicket failed with status ${res.status}`);
-    throw new Error("Unable to create ticket. Please try again.");
+    const message = await readErrorMessage(res, "Unable to create ticket. Please try again.");
+    throw new Error(message);
   }
   const json = await res.json();
   return json.data;
@@ -125,6 +161,77 @@ export async function getTicket(requesterId: number, id: number): Promise<Ticket
   }
   const json = await res.json();
   return json.data;
+}
+
+// Issue 11 — Attachment lifecycle.
+export async function addAttachments(requesterId: number, ticketId: number, files: File[]): Promise<Attachment[]> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append("attachments", f));
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
+      method: "POST",
+      headers: { "X-Dev-Requester-Id": String(requesterId) },
+      body: formData,
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    const message = await readErrorMessage(res, "Unable to add attachment. Please try again.");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function removeAttachment(requesterId: number, attachmentId: number, reason: string): Promise<Attachment> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", "X-Dev-Requester-Id": String(requesterId) },
+      body: JSON.stringify({ reason }),
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    const message = await readErrorMessage(res, "Unable to remove attachment. Please try again.");
+    throw new Error(message);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+// Downloads via fetch + Blob (not a plain <a href>) because the download
+// route needs the same X-Dev-Requester-Id header as every other requester-
+// scoped route — a bare anchor click can't attach a custom header.
+export async function downloadAttachment(requesterId: number, attachmentId: number, filename: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
+      headers: { "X-Dev-Requester-Id": String(requesterId) },
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    throw new Error(res.status === 404 ? "This attachment is not available." : "Unable to download attachment.");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // Issue 9 — My Tickets: search, filter, sort, paginate the current

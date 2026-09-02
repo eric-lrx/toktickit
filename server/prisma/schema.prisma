@@ -62,7 +62,26 @@ model Ticket {
   status            TicketStatus      @default(NEW)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+  attachments       Attachment[]
 
   @@index([requesterId])
   @@index([createdAt])
+}
+
+// Issue 11 — Attachment lifecycle. storedName is a UUID + validated extension,
+// never the client-supplied filename (path traversal, BR-17); originalName is
+// display-only. Soft removal via removedAt/removalReason (BR-19).
+model Attachment {
+  id            Int       @id @default(autoincrement())
+  ticketId      Int
+  ticket        Ticket    @relation(fields: [ticketId], references: [id])
+  originalName  String
+  storedName    String
+  mimeType      String
+  sizeBytes     Int
+  uploadedAt    DateTime  @default(now())
+  removedAt     DateTime?
+  removalReason String?
+
+  @@index([ticketId])
 }

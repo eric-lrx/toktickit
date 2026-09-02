@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import FormField from "./components/FormField.js";
+import AttachmentSection from "./components/AttachmentSection.js";
 import {
   Category,
   createTicket,
@@ -15,8 +16,7 @@ interface Props {
   requesterId: number;
 }
 
-// Issue 8 — Create Ticket. Attachments land in Issue 11 (Attachment lifecycle);
-// this form only covers the ticket fields for now.
+// Issue 8 — Create Ticket. Issue 11 — optional attachments at creation time.
 export default function CreateTicket({ requesterId }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
@@ -25,6 +25,7 @@ export default function CreateTicket({ requesterId }: Props) {
   const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
   const [requestedPriority, setRequestedPriority] = useState<RequestedPriority>("MEDIUM");
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [apiError, setApiError] = useState("");
@@ -53,13 +54,17 @@ export default function CreateTicket({ requesterId }: Props) {
     setStatus("submitting");
     setApiError("");
     try {
-      const ticket = await createTicket(requesterId, {
-        categoryId: Number(categoryId),
-        relatedSystemId: Number(relatedSystemId),
-        summary: summary.trim(),
-        description: description.trim(),
-        requestedPriority,
-      });
+      const ticket = await createTicket(
+        requesterId,
+        {
+          categoryId: Number(categoryId),
+          relatedSystemId: Number(relatedSystemId),
+          summary: summary.trim(),
+          description: description.trim(),
+          requestedPriority,
+        },
+        attachments
+      );
       setTicketNumber(ticket.ticketNumber);
       setStatus("success");
     } catch (err) {
@@ -148,6 +153,10 @@ export default function CreateTicket({ requesterId }: Props) {
           onChange={(e) => setDescription(e.target.value)}
         />
       </FormField>
+
+      <div className="mb-3">
+        <AttachmentSection files={attachments} onChange={setAttachments} />
+      </div>
 
       {status === "error" && (
         <p role="alert" style={{ color: "var(--zg-error)" }}>

@@ -41,9 +41,9 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | API-02 | API | AC-04, BR-12 | `POST /api/tickets` missing Summary | 400 naming `summary` | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
 | API-03 | API | BR-07 | `POST /api/tickets` missing `X-Dev-Requester-Id` | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
 | API-04 | API | AC-20, BR-21 | `POST /api/tickets` with inactive requester id | 400 | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
-| API-05 | API | AC-16, BR-15 | `POST /api/tickets` with a `.exe` attachment | 415 | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
-| API-06 | API | AC-17, BR-15 | `POST /api/tickets` with a 6 MB file | 413 | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
-| API-07 | API | BR-20 | Ticket write succeeds, forced attachment write failure | No Ticket row persisted; no temp file left on disk | `server/tests/lab-02/create-ticket.api.test.ts` | Deferred to Issue 11 |
+| API-05 | API | AC-16, BR-15 | `POST /api/tickets` with a `.exe` attachment | 415 | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
+| API-06 | API | AC-17, BR-15 | `POST /api/tickets` with a 6 MB file | 413 | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
+| API-07 | API | BR-20 | Validation fails after a file is written (invalid categoryId + valid attachment) | No Ticket row persisted; no orphaned file left on disk | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
 | API-08 | API | AC-08 | `GET /api/tickets?search=<ticketNumber>` | Only the matching Ticket returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
 | API-09 | API | AC-09 | Combined `categoryId`+`relatedSystemId`+`requestedPriority` filters | Only Tickets matching all filters returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
 | API-10 | API | AC-10 | `sort=ticketNumber&order=asc` | Results are ordered ascending by ticketNumber | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
@@ -53,11 +53,11 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | API-14 | API | AC-06 | List for a Requester with zero Tickets | `200`, `data: []`, `total: 0` | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
 | API-15 | API | AC-03 | `GET /api/tickets/:id` owned by another Requester | 404 | `server/tests/lab-02/ticket-detail.api.test.ts` | Pass |
 | API-16 | API | FR-10 | `GET /api/tickets/:id` owned | 200 with nested `attachments` | `server/tests/lab-02/ticket-detail.api.test.ts` | Pass |
-| API-17 | API | AC-13, BR-15 | Upload a 6th attachment when 5 active exist | 409 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
-| API-18 | API | AC-14, BR-16 | Upload when 4 active + 1 soft-removed exist | 201 (removed one excluded from quota) | `server/tests/lab-02/attachments.api.test.ts` | Pending |
-| API-19 | API | AC-15, BR-19 | Download after soft-removal | 404 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
-| API-20 | API | BR-18 | `DELETE` attachment without `reason` | 400 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
-| API-21 | API | BR-10 | Download/soft-remove an attachment owned by another Requester | 404 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
+| API-17 | API | AC-13, BR-15 | Upload a 6th attachment when 5 active exist | 409 | `server/tests/lab-02/attachments.api.test.ts` | Pass |
+| API-18 | API | AC-14, BR-16 | Upload when 4 active + 1 soft-removed exist | 201 (removed one excluded from quota) | `server/tests/lab-02/attachments.api.test.ts` | Pass |
+| API-19 | API | AC-15, BR-19 | Download after soft-removal | 404 | `server/tests/lab-02/attachments.api.test.ts` | Pass |
+| API-20 | API | BR-18 | `DELETE` attachment without `reason` | 400 | `server/tests/lab-02/attachments.api.test.ts` | Pass |
+| API-21 | API | BR-10 | Download/soft-remove an attachment owned by another Requester | 404 | `server/tests/lab-02/attachments.api.test.ts` | Pass |
 | API-22 | API | BR-21 | `GET /api/requesters` | Seeded inactive Requester is excluded from the list | `server/tests/lab-02/requester-context.api.test.ts` | Pass |
 | API-23 | API | FR-01 | `GET /api/categories` | Returns only active categories | `server/tests/lab-02/requester-context.api.test.ts` | Pass |
 | API-24 | API | FR-01 | `GET /api/related-systems` | Returns the ≥6 seeded active related systems | `server/tests/lab-02/requester-context.api.test.ts` | Pass |
@@ -75,7 +75,7 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | UI-02 | UI | BR-13 | Submit button while request is pending | Busy + `disabled` | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
 | UI-03 | UI | AC-01 | Successful submit | Ticket Number from the mocked response is rendered | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
 | UI-04 | UI | AC-05 | Submit with a mocked network failure | Error shown; all field values still present | `client/tests/lab-02/CreateTicket.test.tsx` | Pass |
-| UI-05 | UI | AC-16 | Select a disallowed file type | Per-file inline error; file not added to the upload list | `client/tests/lab-02/AttachmentSection.test.tsx` | Pending |
+| UI-05 | UI | AC-16 | Select a disallowed file type | Per-file inline error; file not added to the upload list | `client/tests/lab-02/AttachmentSection.test.tsx` | Pass |
 | UI-06 | UI | AC-06, AC-07 | Empty vs. no-results states | Correct, distinct message rendered per case | `client/tests/lab-02/MyTickets.test.tsx` | Pass |
 | UI-07 | UI | AC-18 | Requester switch | Previous Requester's rows are removed from the DOM before new ones render | `client/tests/lab-02/MyTickets.test.tsx` | Pass |
 | UI-10 | UI | AC-02 | Render the app with no Requester in context | Selector screen is shown | `client/tests/lab-02/AppRoot.test.tsx` | Pass |
@@ -266,15 +266,62 @@ mocked assertion. `attachments` is a real empty array from the database (no
 Attachment rows exist yet), not a hardcoded stub; Issue 11 will populate it
 for real.
 
+### Issue 11 — Attachment lifecycle
+
+```
+server: tests/lab-01/health.test.ts (1), tests/lab-01/categories.test.ts (1),
+        tests/lab-02/requester-context.api.test.ts (3),
+        tests/lab-02/ticket-number.unit.test.ts (3),
+        tests/lab-02/create-ticket.api.test.ts (8),
+        tests/lab-02/my-tickets.api.test.ts (7),
+        tests/lab-02/ticket-detail.api.test.ts (3),
+        tests/lab-02/attachments.api.test.ts (12) — 38 passed (38)
+client: tests/lab-01/App.test.tsx (3), tests/lab-02/RequesterSelector.test.tsx (4),
+        tests/lab-02/AppShell.test.tsx (4), tests/lab-02/zen-green.style.test.tsx (5),
+        tests/lab-02/CreateTicket.test.tsx (4), tests/lab-02/MyTickets.test.tsx (3),
+        tests/lab-02/AppRoot.test.tsx (1), tests/lab-02/RequesterTicketDetail.test.tsx (2),
+        tests/lab-02/AttachmentSection.test.tsx (3) — 29 passed (29)
+```
+
+Manually verified end to end against the real app, server, and disk — not
+just mocked tests: created a Ticket with a real JPEG attached through the
+actual Create Ticket form (attempted an `.exe` first, confirmed the inline
+rejection, then attached the valid file and submitted); confirmed via `psql`
+and `ls server/uploads/` that the file exists on disk under a random UUID
+name while the database alone remembers the original filename (BR-17);
+downloaded the attachment from Ticket Detail and confirmed a real `200` on
+`GET /api/attachments/:id/download` with no console errors; soft-removed it
+with a required reason through the confirm/cancel prompt and confirmed via
+`psql` that `removedAt`/`removalReason` were set and the row was not
+deleted; confirmed the removed attachment's download now returns `404`;
+uploaded 5 fresh attachments to the same Ticket and confirmed a 6th is
+rejected with the real backend message ("Ticket already has 5 active
+attachment(s); maximum is 5") surfaced directly in the UI — proving both the
+quota enforcement and that the previously-removed attachment correctly did
+not count toward it.
+
+Two small fixes made during this pass:
+1. Removed the `accept=".jpg,..."` attribute from the file input — `userEvent
+   .upload` (and real browsers, for drag-and-drop) can bypass it entirely, so
+   it was silently preventing the disallowed-type test from ever reaching the
+   real validation logic. The attribute was a UX nicety, not a security
+   boundary — server-side validation is unchanged and is the real gate.
+2. Removed a duplicated "Attachments" heading in `RequesterTicketDetail`
+   (the section `<h3>` and `AttachmentSection`'s own `<label>` both said
+   "Attachments") — cosmetic, caught by eye during manual verification.
+
 ## 7. Known Limitations or Deferred Tests
 
 - Responsive (`RESP-*`) and E2E (`E2E-*`) rows cannot execute until Playwright is
   installed in Issue 12; until then they are planned, not run.
 - Current Status transitions, IT Priority, and Ticket Owner are out of scope (see
   `specification.md` §3 and §11) and therefore have no tests in this plan.
-- API-05/06/07 (attachment type/size validation and the compensation strategy on
-  Ticket creation) require the `Attachment` model and upload plumbing, which is
-  Issue 11's scope, not Issue 8's (the Issue table separates "Create Ticket" from
-  "Attachment lifecycle" and does not list attachments under Issue 8). Issue 8
-  implements Ticket creation with its non-file fields only; these three rows run
-  once Issue 11 lands.
+- API-05/06/07 were deferred during Issue 8 (no `Attachment` model existed yet)
+  and now run for real as of Issue 11 — see §6.
+- API-07's compensation-strategy test exercises the cleanup path via a
+  validation failure after a file is written (invalid `categoryId` with a
+  valid attachment attached), not a simulated Prisma transaction failure —
+  interactive transactions make injecting a targeted DB-only failure
+  impractical without fabricating an unrealistic constraint violation. The
+  cleanup code path (`deleteFiles`) is identical regardless of which failure
+  triggers it, so this still proves the guarantee BR-20 requires.

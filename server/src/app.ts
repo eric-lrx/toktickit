@@ -1,9 +1,12 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
+import path from "path";
+import multer from "multer";
 import { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import { requireActiveRequester, RequesterRequest } from "./requesterAuth.js";
 import { nextTicketNumber, withUniqueTicketNumber } from "./ticketNumber.js";
+import { deleteFiles, MAX_ACTIVE_ATTACHMENTS, UnsupportedFileTypeError, uploadAttachments, UPLOAD_DIR } from "./attachmentStorage.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -70,8 +73,7 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// Issue 8 — Create Ticket. Attachments are Issue 11's scope (Attachment
-// lifecycle), so this endpoint only accepts the non-file fields for now.
+// Issue 8 — Create Ticket.
 // ---------------------------------------------------------------------------
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
 
@@ -127,27 +129,56 @@ async function validateTicketInput(
   };
 }
 
-app.post("/api/tickets", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
-  const result = await validateTicketInput(req.body);
-  if ("errors" in result) {
-    res.status(400).json({ error: { message: result.errors.join("; ") } });
-    return;
-  }
+// Issue 11 — compensation strategy for creation-with-attachments
+// (specification.md §11): validate all files first (fileFilter/limits below),
+// write them to disk under their final safe name, then create the Ticket +
+// Attachment rows in one transaction. On any failure after upload, delete the
+// written files — no orphaned Ticket row and no orphaned file either way.
+app.post(
+  "/api/tickets",
+  requireActiveRequester,
+  uploadAttachments.array("attachments", MAX_ACTIVE_ATTACHMENTS),
+  async (req: RequesterRequest, res: Response) => {
+    const files = (req.files as Express.Multer.File[]) ?? [];
+    const result = await validateTicketInput(req.body);
+    if ("errors" in result) {
+      await deleteFiles(files);
+      res.status(400).json({ error: { message: result.errors.join("; ") } });
+      return;
+    }
 
-  try {
-    const year = new Date().getFullYear();
-    const ticket = await withUniqueTicketNumber(
-      () => nextTicketNumber(year),
-      (ticketNumber) =>
-        getPrisma().ticket.create({
-          data: { ticketNumber, requesterId: req.requesterId!, ...result.data },
-        })
-    );
-    res.status(201).json({ data: ticket });
-  } catch {
-    res.status(500).json({ error: { message: "Unable to create ticket" } });
+    try {
+      const year = new Date().getFullYear();
+      const ticket = await withUniqueTicketNumber(
+        () => nextTicketNumber(year),
+        (ticketNumber) =>
+          getPrisma().$transaction(async (tx) => {
+            const created = await tx.ticket.create({
+              data: { ticketNumber, requesterId: req.requesterId!, ...result.data },
+            });
+            const attachments = await Promise.all(
+              files.map((f) =>
+                tx.attachment.create({
+                  data: {
+                    ticketId: created.id,
+                    originalName: f.originalname,
+                    storedName: path.basename(f.path),
+                    mimeType: f.mimetype,
+                    sizeBytes: f.size,
+                  },
+                })
+              )
+            );
+            return { ...created, attachments };
+          })
+      );
+      res.status(201).json({ data: ticket });
+    } catch {
+      await deleteFiles(files);
+      res.status(500).json({ error: { message: "Unable to create ticket" } });
+    }
   }
-});
+);
 
 // ---------------------------------------------------------------------------
 // Issue 9 — My Tickets: search, filter, sort, paginate the current
@@ -242,8 +273,6 @@ app.get("/api/tickets", requireActiveRequester, async (req: RequesterRequest, re
 // Issue 10 — Requester Ticket Detail, read-only. 404 (never 403) when the
 // Ticket doesn't exist or isn't owned by the current Requester (BR-10):
 // a 403 would confirm the resource exists under someone else.
-// `attachments` is a real (empty) array — the Attachment model lands in
-// Issue 11, so every Ticket honestly has none yet.
 // ---------------------------------------------------------------------------
 app.get("/api/tickets/:id", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
   const id = Number(req.params.id);
@@ -258,10 +287,141 @@ app.get("/api/tickets/:id", requireActiveRequester, async (req: RequesterRequest
       res.status(404).json({ error: { message: "Ticket not found" } });
       return;
     }
-    res.status(200).json({ data: { ...ticket, attachments: [] } });
+    const attachments = await getPrisma().attachment.findMany({ where: { ticketId: id }, orderBy: { id: "asc" } });
+    res.status(200).json({ data: { ...ticket, attachments } });
   } catch {
     res.status(500).json({ error: { message: "Unable to load ticket" } });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Issue 11 — Attachment lifecycle.
+// ---------------------------------------------------------------------------
+app.post(
+  "/api/tickets/:id/attachments",
+  requireActiveRequester,
+  uploadAttachments.array("attachments", MAX_ACTIVE_ATTACHMENTS),
+  async (req: RequesterRequest, res: Response) => {
+    const files = (req.files as Express.Multer.File[]) ?? [];
+    const ticketId = Number(req.params.id);
+
+    if (!Number.isInteger(ticketId)) {
+      await deleteFiles(files);
+      res.status(404).json({ error: { message: "Ticket not found" } });
+      return;
+    }
+    if (files.length === 0) {
+      res.status(400).json({ error: { message: "At least one file is required" } });
+      return;
+    }
+
+    const ticket = await getPrisma().ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket || ticket.requesterId !== req.requesterId) {
+      await deleteFiles(files);
+      res.status(404).json({ error: { message: "Ticket not found" } });
+      return;
+    }
+
+    // BR-15/BR-16 — soft-removed attachments don't count toward the quota.
+    const activeCount = await getPrisma().attachment.count({ where: { ticketId, removedAt: null } });
+    if (activeCount + files.length > MAX_ACTIVE_ATTACHMENTS) {
+      await deleteFiles(files);
+      res.status(409).json({
+        error: { message: `Ticket already has ${activeCount} active attachment(s); maximum is ${MAX_ACTIVE_ATTACHMENTS}` },
+      });
+      return;
+    }
+
+    try {
+      const created = await getPrisma().$transaction(
+        files.map((f) =>
+          getPrisma().attachment.create({
+            data: {
+              ticketId,
+              originalName: f.originalname,
+              storedName: path.basename(f.path),
+              mimeType: f.mimetype,
+              sizeBytes: f.size,
+            },
+          })
+        )
+      );
+      res.status(201).json({ data: created });
+    } catch {
+      await deleteFiles(files);
+      res.status(500).json({ error: { message: "Unable to save attachments" } });
+    }
+  }
+);
+
+// Owned + active only (BR-10, BR-19): identical 404 whether the attachment
+// doesn't exist, isn't owned via its Ticket, or has been soft-removed.
+app.get("/api/attachments/:id/download", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Attachment not found" } });
+    return;
+  }
+
+  const attachment = await getPrisma().attachment.findUnique({ where: { id }, include: { ticket: true } });
+  if (!attachment || attachment.ticket.requesterId !== req.requesterId || attachment.removedAt) {
+    res.status(404).json({ error: { message: "Attachment not found" } });
+    return;
+  }
+
+  res.download(path.join(UPLOAD_DIR, attachment.storedName), attachment.originalName, (err) => {
+    if (err && !res.headersSent) {
+      res.status(500).json({ error: { message: "Unable to download attachment" } });
+    }
+  });
+});
+
+// Soft removal only — BR-18/BR-19: reason required, only the owner (via the
+// Ticket) may remove, metadata stays visible afterward.
+app.delete("/api/attachments/:id", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+  const id = Number(req.params.id);
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!reason) {
+    res.status(400).json({ error: { message: "reason is required" } });
+    return;
+  }
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Attachment not found" } });
+    return;
+  }
+
+  const attachment = await getPrisma().attachment.findUnique({ where: { id }, include: { ticket: true } });
+  if (!attachment || attachment.ticket.requesterId !== req.requesterId || attachment.removedAt) {
+    res.status(404).json({ error: { message: "Attachment not found" } });
+    return;
+  }
+
+  try {
+    const updated = await getPrisma().attachment.update({
+      where: { id },
+      data: { removedAt: new Date(), removalReason: reason },
+    });
+    res.status(200).json({ data: updated });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to remove attachment" } });
+  }
+});
+
+// Multer's fileFilter/limits errors surface here (must stay last, 4 args).
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof UnsupportedFileTypeError) {
+    res.status(415).json({ error: { message: err.message } });
+    return;
+  }
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: { message: "File exceeds the 5 MB limit" } });
+      return;
+    }
+    res.status(400).json({ error: { message: err.message } });
+    return;
+  }
+  next(err);
 });
 
 export default app;
