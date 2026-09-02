@@ -51,8 +51,8 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | API-12 | API | AC-12 | `sort=nope` | 400 naming `sort` | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
 | API-13 | API | AC-18, BR-11 | List as Requester A, then as Requester B | Disjoint result sets | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
 | API-14 | API | AC-06 | List for a Requester with zero Tickets | `200`, `data: []`, `total: 0` | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
-| API-15 | API | AC-03 | `GET /api/tickets/:id` owned by another Requester | 404 | `server/tests/lab-02/ticket-detail.api.test.ts` | Pending |
-| API-16 | API | FR-10 | `GET /api/tickets/:id` owned | 200 with nested `attachments` | `server/tests/lab-02/ticket-detail.api.test.ts` | Pending |
+| API-15 | API | AC-03 | `GET /api/tickets/:id` owned by another Requester | 404 | `server/tests/lab-02/ticket-detail.api.test.ts` | Pass |
+| API-16 | API | FR-10 | `GET /api/tickets/:id` owned | 200 with nested `attachments` | `server/tests/lab-02/ticket-detail.api.test.ts` | Pass |
 | API-17 | API | AC-13, BR-15 | Upload a 6th attachment when 5 active exist | 409 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
 | API-18 | API | AC-14, BR-16 | Upload when 4 active + 1 soft-removed exist | 201 (removed one excluded from quota) | `server/tests/lab-02/attachments.api.test.ts` | Pending |
 | API-19 | API | AC-15, BR-19 | Download after soft-removal | 404 | `server/tests/lab-02/attachments.api.test.ts` | Pending |
@@ -79,7 +79,7 @@ Six required levels: unit, API, UI component, UI style, responsive, and E2E.
 | UI-06 | UI | AC-06, AC-07 | Empty vs. no-results states | Correct, distinct message rendered per case | `client/tests/lab-02/MyTickets.test.tsx` | Pass |
 | UI-07 | UI | AC-18 | Requester switch | Previous Requester's rows are removed from the DOM before new ones render | `client/tests/lab-02/MyTickets.test.tsx` | Pass |
 | UI-10 | UI | AC-02 | Render the app with no Requester in context | Selector screen is shown | `client/tests/lab-02/AppRoot.test.tsx` | Pass |
-| UI-08 | UI | FR-10 | Ticket Detail read-only rendering | No editable inputs present in the ticket-info block | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Pending |
+| UI-08 | UI | FR-10 | Ticket Detail read-only rendering | No editable inputs present in the ticket-info block | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Pass |
 | UI-09 | UI | BR-19 | Removed attachment row | Download control absent/disabled | `client/tests/lab-02/AttachmentSection.test.tsx` | Pending |
 | STYLE-01 | UI Style | ui-spec §3 | Required-field asterisk | Asterisk element present on every required field | `client/tests/lab-02/zen-green.style.test.tsx` | Pending |
 | STYLE-02 | UI Style | ui-spec §3 | Disabled/busy submit button | Correct class/attribute while submitting | `client/tests/lab-02/zen-green.style.test.tsx` | Pending |
@@ -238,6 +238,33 @@ same real, shared dev database as manual verification (matching the Lab 1
 approach), ticket counts vary run to run — the tests instead assert the
 general property (ascending order; `meta` fields consistent with the request)
 rather than an exact row count. Table wording adjusted accordingly.
+
+### Issue 10 — Requester Ticket Detail
+
+```
+server: tests/lab-01/health.test.ts (1), tests/lab-01/categories.test.ts (1),
+        tests/lab-02/requester-context.api.test.ts (3),
+        tests/lab-02/ticket-number.unit.test.ts (3),
+        tests/lab-02/create-ticket.api.test.ts (4),
+        tests/lab-02/my-tickets.api.test.ts (7),
+        tests/lab-02/ticket-detail.api.test.ts (3) — 22 passed (22)
+client: tests/lab-01/App.test.tsx (3), tests/lab-02/RequesterSelector.test.tsx (4),
+        tests/lab-02/AppShell.test.tsx (4), tests/lab-02/zen-green.style.test.tsx (5),
+        tests/lab-02/CreateTicket.test.tsx (4), tests/lab-02/MyTickets.test.tsx (3),
+        tests/lab-02/AppRoot.test.tsx (1),
+        tests/lab-02/RequesterTicketDetail.test.tsx (2) — 26 passed (26)
+```
+
+Manually verified end to end in the real app: opened an owned Ticket from My
+Tickets (real click-through, not a direct URL type-in) and confirmed every
+field — Ticket Number, Status, dates, Requested Priority, Summary,
+Description — renders read-only with no input/textarea/button controls other
+than navigation; then, without changing the URL, switched Requester from Ada
+Lovelace to Grace Hopper via Change Requester and confirmed the same Ticket id
+now shows "Ticket not found." — real cross-Requester access rejection, not a
+mocked assertion. `attachments` is a real empty array from the database (no
+Attachment rows exist yet), not a hardcoded stub; Issue 11 will populate it
+for real.
 
 ## 7. Known Limitations or Deferred Tests
 

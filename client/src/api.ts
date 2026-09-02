@@ -40,6 +40,16 @@ export async function getRelatedSystems(): Promise<RelatedSystem[]> {
 
 export type RequestedPriority = "LOW" | "MEDIUM" | "HIGH";
 
+export interface Attachment {
+  id: number;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  removedAt: string | null;
+  removalReason: string | null;
+}
+
 export interface Ticket {
   id: number;
   ticketNumber: string;
@@ -52,6 +62,10 @@ export interface Ticket {
   status: "NEW";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TicketDetail extends Ticket {
+  attachments: Attachment[];
 }
 
 export interface CreateTicketInput {
@@ -84,6 +98,30 @@ export async function createTicket(requesterId: number, input: CreateTicketInput
   if (!res.ok) {
     console.error(`createTicket failed with status ${res.status}`);
     throw new Error("Unable to create ticket. Please try again.");
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+// Issue 10 — Requester Ticket Detail, read-only. 404 (owned or not found,
+// same response either way — BR-10) is treated as "Ticket not found" by the
+// caller; there's no separate "forbidden" case to distinguish.
+export async function getTicket(requesterId: number, id: number): Promise<TicketDetail> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/tickets/${id}`, {
+      headers: { "X-Dev-Requester-Id": String(requesterId) },
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (res.status === 404) {
+    throw new Error("Ticket not found.");
+  }
+  if (!res.ok) {
+    console.error(`getTicket failed with status ${res.status}`);
+    throw new Error("Unable to load ticket. Please try again.");
   }
   const json = await res.json();
   return json.data;
