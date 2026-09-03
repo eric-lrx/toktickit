@@ -48,10 +48,10 @@ export default function Shell({ requester, onChangeRequester, children }: Props)
               mobileOpen ? "d-flex flex-column align-items-start gap-2 mt-2" : "d-none"
             }`}
           >
-            <NavLink to="/tickets" end className={navLinkClass}>
+            <NavLink to="/tickets" end className={navLinkClass} onClick={() => setMobileOpen(false)}>
               My Tickets
             </NavLink>
-            <NavLink to="/tickets/new" className={navLinkClass}>
+            <NavLink to="/tickets/new" className={navLinkClass} onClick={() => setMobileOpen(false)}>
               Create Ticket
             </NavLink>
             <span className="text-white-50 small ms-md-3">{requester.name}</span>

@@ -1,5 +1,6 @@
 # dependencies
 node_modules/
+.vite/
 # env & secrets
 .env
 *.env
@@ -11,6 +12,12 @@ build/
 server/prisma/*.db
 # uploaded attachments (Lab 2, Issue 11)
 server/uploads/
+# Playwright run output (Lab 2, Issue 12) — not the artifacts/lab-02/screenshots
+# evidence itself, which is a required deliverable and stays tracked.
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 # logs & OS
 *.log
 .DS_Store
