@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import FormField from "./components/FormField.js";
 import AttachmentSection from "./components/AttachmentSection.js";
 import {
@@ -30,6 +31,7 @@ export default function CreateTicket({ requesterId }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [apiError, setApiError] = useState("");
   const [ticketNumber, setTicketNumber] = useState("");
+  const [ticketId, setTicketId] = useState<number | null>(null);
 
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
@@ -66,11 +68,26 @@ export default function CreateTicket({ requesterId }: Props) {
         attachments
       );
       setTicketNumber(ticket.ticketNumber);
+      setTicketId(ticket.id);
       setStatus("success");
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Unable to create ticket.");
       setStatus("error");
     }
+  }
+
+  function handleCreateAnother() {
+    setCategoryId("");
+    setRelatedSystemId("");
+    setSummary("");
+    setDescription("");
+    setRequestedPriority("MEDIUM");
+    setAttachments([]);
+    setErrors({});
+    setApiError("");
+    setTicketNumber("");
+    setTicketId(null);
+    setStatus("idle");
   }
 
   if (status === "success") {
@@ -80,6 +97,14 @@ export default function CreateTicket({ requesterId }: Props) {
         <p className="mb-0">
           Ticket Number: <strong>{ticketNumber}</strong>
         </p>
+        <div className="d-flex gap-2 mt-3">
+          <Link to={`/tickets/${ticketId}`} className="btn btn-success">
+            View Ticket
+          </Link>
+          <button type="button" className="btn btn-outline-secondary" onClick={handleCreateAnother}>
+            Create another
+          </button>
+        </div>
       </div>
     );
   }

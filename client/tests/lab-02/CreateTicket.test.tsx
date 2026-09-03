@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import CreateTicket from "../../src/CreateTicket.js";
 import * as api from "../../src/api.js";
@@ -17,6 +18,14 @@ async function fillValidForm() {
   await userEvent.type(screen.getByLabelText(/^description/i), "Paper stuck in tray 2");
 }
 
+function renderCreateTicket() {
+  render(
+    <MemoryRouter>
+      <CreateTicket requesterId={1} />
+    </MemoryRouter>
+  );
+}
+
 describe("CreateTicket", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -25,7 +34,7 @@ describe("CreateTicket", () => {
   it("shows a field error and does not call the API when Summary is empty", async () => {
     mockReferenceData();
     const createSpy = vi.spyOn(api, "createTicket");
-    render(<CreateTicket requesterId={1} />);
+    renderCreateTicket();
 
     await userEvent.click(await screen.findByRole("button", { name: /submit/i }));
 
@@ -41,7 +50,7 @@ describe("CreateTicket", () => {
         resolveCreate = resolve;
       })
     );
-    render(<CreateTicket requesterId={1} />);
+    renderCreateTicket();
     await fillValidForm();
 
     await userEvent.click(screen.getByRole("button", { name: /submit/i }));
@@ -82,7 +91,7 @@ describe("CreateTicket", () => {
       updatedAt: "",
       attachments: [],
     });
-    render(<CreateTicket requesterId={1} />);
+    renderCreateTicket();
     await fillValidForm();
     await userEvent.click(screen.getByRole("button", { name: /submit/i }));
 
@@ -92,11 +101,60 @@ describe("CreateTicket", () => {
   it("shows a safe failure message and preserves the entered values on API failure", async () => {
     mockReferenceData();
     vi.spyOn(api, "createTicket").mockRejectedValue(new Error("Unable to create ticket"));
-    render(<CreateTicket requesterId={1} />);
+    renderCreateTicket();
     await fillValidForm();
     await userEvent.click(screen.getByRole("button", { name: /submit/i }));
 
     expect(await screen.findByText(/unable to create ticket/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^summary/i)).toHaveValue("Printer jam");
+  });
+
+  it("offers a View Ticket link to the created ticket on success", async () => {
+    mockReferenceData();
+    vi.spyOn(api, "createTicket").mockResolvedValue({
+      id: 42,
+      ticketNumber: "TKT-2026-000042",
+      requesterId: 1,
+      categoryId: 1,
+      relatedSystemId: 1,
+      summary: "Printer jam",
+      description: "Paper stuck in tray 2",
+      requestedPriority: "MEDIUM",
+      status: "NEW",
+      createdAt: "",
+      updatedAt: "",
+      attachments: [],
+    });
+    renderCreateTicket();
+    await fillValidForm();
+    await userEvent.click(screen.getByRole("button", { name: /submit/i }));
+
+    const viewLink = await screen.findByRole("link", { name: /view ticket/i });
+    expect(viewLink).toHaveAttribute("href", "/tickets/42");
+  });
+
+  it("resets the form to a blank state when Create another is clicked", async () => {
+    mockReferenceData();
+    vi.spyOn(api, "createTicket").mockResolvedValue({
+      id: 42,
+      ticketNumber: "TKT-2026-000042",
+      requesterId: 1,
+      categoryId: 1,
+      relatedSystemId: 1,
+      summary: "Printer jam",
+      description: "Paper stuck in tray 2",
+      requestedPriority: "MEDIUM",
+      status: "NEW",
+      createdAt: "",
+      updatedAt: "",
+      attachments: [],
+    });
+    renderCreateTicket();
+    await fillValidForm();
+    await userEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /create another/i }));
+
+    expect(await screen.findByLabelText(/^summary/i)).toHaveValue("");
+    expect(screen.getByRole("button", { name: /^submit$/i })).toBeInTheDocument();
   });
 });
