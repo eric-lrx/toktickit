@@ -1,13 +1,21 @@
-# Lab 2 — AI Use and Reflection  (fill this in)
+Lab 2 — AI Use and Reflection
 
-**LLM/agent used:** <name>
+LLM/agent used: Claude sonet 5 — effort high
 
-## Selected key prompts (6–10)
-| # | Prompt (summarised) | What I did with the result |
-|---|---------------------|----------------------------|
-| 1 |  |  |
-| 2 |  |  |
+Selected key prompts
+#    Prompt (summarised)    What I did with the result
+1    Can you analyse the Lab 2 PDF and identify all the requirements, constraints, exclusions, and potential grading risks I need to pay attention to?    I used the analysis to understand the complete Lab 2 scope, especially the Engineering Contract, required screens, attachment rules, ownership requirements, testing requirements, Git workflow, and submission evidence.
+2    Can you help me create a complete Sprint 2 engineering specification for docs/lab-02/specification.md, including functional requirements, business rules, data changes, API requirements, acceptance criteria, and Definition of Done?    I used the result as the foundation for the specification and then reviewed and adjusted the proposed requirements and decisions before implementation.
+3    Can you review the specification and identify missing business rules, ambiguities, contradictions, or requirements that are not sufficiently testable?    I used the review to refine rules concerning requester selection, ownership, validation, duplicate submissions, attachments, soft removal, inactive requesters, errors, pagination, and requester switching.
+4    Based on the approved specification, can you create a Test DD/TDD plan covering unit, API, UI, visual, responsive, and E2E tests, with every Acceptance Criterion mapped to at least one test?    I used the proposed test plan to build docs/lab-02/tests.md and ensure that the important functional, boundary, failure, ownership, attachment, responsive, and multi-requester scenarios were planned before considering the implementation complete.
+5    Can you review the Create Ticket, My Tickets, and Ticket Detail UI requirements and propose a consistent Zen Green UI specification covering components, states, responsive behavior, accessibility, and visual checks?    I used the result to prepare and refine ui-spec.md, including the color tokens, form states, button hierarchy, responsive layouts, validation messages, ticket lists, badges, attachment states, and accessibility requirements.
+6    Can you audit the implementation against the specification, acceptance criteria, planned tests, API contract, UI specification, and Definition of Done, and identify anything missing or insufficiently tested?    I used the audit as a final verification step to find missing evidence, incomplete tests, specification deviations, failure cases, and implementation issues before considering the Lab 2 increment complete.
+7    Can you review the final Lab 2 repository and GitHub workflow against the assignment requirements and identify any missing Issues, branches, Pull Requests, reviews, documentation, or evidence needed for the final PDF?    I used the review to verify the engineering workflow, staging branch, feature branches, Pull Requests, peer review, documentation, and required submission evidence.
+8    Can you act as the evaluator and review the final Lab 2 deliverable, focusing on what could lose points in Parts 1–9 and what evidence is still missing?    I used this as a final grading-oriented review to check that the software behavior and the submitted evidence were both sufficient and traceable to the requirements.
+My Reflection
 
-## Reflection
-Two or three sentences: what made your prompts better, and one place you had to
-correct or reject what the agent produced.
+My use of the AI agent became more structured compared with Lab 1. Instead of mainly using the LLM to understand the assignment and create an action plan, I used it as an engineering assistant throughout the specification, testing, UI design, implementation review, and final verification stages.
+
+One important improvement was that I did not treat the AI-generated specification or test plan as automatically correct. I reviewed the proposed business rules, acceptance criteria, API behavior, and test scenarios and refined them when they were too general, ambiguous, or did not fully cover the requirements. I also used the agent to identify missing edge cases such as ownership violations, inactive Requesters, attachment limits, upload failures, soft removal, empty and no-results states, and requester switching.
+
+I also became more careful about using AI-generated claims such as “done.” Instead of relying on the agent's statement that an implementation was complete, I checked the implementation against the specification, planned tests, acceptance criteria, UI requirements, and actual test results. This helped me use the AI as an engineering assistant while keeping responsibility for the final technical and design decisions.
