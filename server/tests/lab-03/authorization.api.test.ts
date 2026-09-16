@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import { attachSession, requireRole, SESSION_COOKIE } from "../../src/session.js";
 import { getPrisma } from "../../src/prisma.js";
+import { app } from "../../src/app.js";
+import { loginAs } from "./testAuth.js";
 
 // Requires the DB to be migrated and seeded first (npx prisma migrate dev && npm run prisma:seed).
 //
@@ -65,5 +67,32 @@ describe("requireRole", () => {
     const cookie = await cookieFor("barbara.liskov@toktickit.com");
     const res = await request(buildTestApp()).get("/staff-only").set("Cookie", cookie);
     expect(res.status).toBe(200);
+  });
+});
+
+describe("AUTHZ-10 — a client-supplied requesterId is ignored on Ticket creation", () => {
+  it("uses the session's identity, not a requesterId injected into the request body", async () => {
+    const requester = await getPrisma().user.findFirstOrThrow({ where: { role: "REQUESTER", isActive: true } });
+    const impersonated = await getPrisma().user.findFirstOrThrow({
+      where: { role: "REQUESTER", isActive: true, id: { not: requester.id } },
+    });
+    const category = await getPrisma().category.findFirstOrThrow({ where: { isActive: true } });
+    const relatedSystem = await getPrisma().relatedSystem.findFirstOrThrow({ where: { isActive: true } });
+    const cookie = await loginAs(requester.email);
+
+    const res = await request(app)
+      .post("/api/tickets")
+      .set("Cookie", cookie)
+      .send({
+        categoryId: category.id,
+        relatedSystemId: relatedSystem.id,
+        summary: "Body-spoofing attempt",
+        description: "requesterId below claims to be someone else entirely",
+        requestedPriority: "LOW",
+        requesterId: impersonated.id,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.requesterId).toBe(requester.id);
   });
 });
