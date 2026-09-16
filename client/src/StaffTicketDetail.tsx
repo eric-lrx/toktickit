@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
+import CommentPanel from "./components/CommentPanel.js";
 import { useAuth } from "./AuthContext.js";
 import {
   getStaffTicket,
   getStaffUsers,
+  postComment,
+  postNote,
   RequestedPriority,
   setTicketItPriority,
   setTicketOwner,
@@ -25,8 +28,8 @@ function priorityTone(priority: RequestedPriority): "pale" | "warning" | "danger
 
 // Issue 36 — IT Staff Ticket Detail: Owner (claim/reassign), IT Priority,
 // Status (constrained to the transition matrix), Resolution Summary
-// (editable, submitted together with a move to Resolved). Public Comments/
-// Internal Notes panels land in Issue 37 (ui-spec.md §5).
+// (editable, submitted together with a move to Resolved). Issue 37 adds the
+// Public Comments and Internal Notes panels (ui-spec.md §5).
 export default function StaffTicketDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -263,6 +266,28 @@ export default function StaffTicketDetail() {
           </ul>
         </div>
       )}
+
+      <div className="mb-4">
+        <CommentPanel
+          variant="public"
+          entries={ticket.publicComments}
+          onPost={async (content) => {
+            await postComment(ticket.id, content);
+            await load();
+          }}
+        />
+      </div>
+
+      <div className="mb-4">
+        <CommentPanel
+          variant="internal"
+          entries={ticket.internalNotes}
+          onPost={async (content) => {
+            await postNote(ticket.id, content);
+            await load();
+          }}
+        />
+      </div>
     </div>
   );
 }

@@ -39,6 +39,8 @@ model User {
   updatedAt          DateTime @updatedAt
   tickets            Ticket[]
   ownedTickets       Ticket[] @relation("TicketOwner")
+  publicComments     PublicComment[]
+  internalNotes      InternalNote[]
 }
 
 model RelatedSystem {
@@ -101,10 +103,43 @@ model Ticket {
   resolutionSummary             String?
   requesterResolutionIndicatedAt DateTime?
 
+  publicComments PublicComment[]
+  internalNotes  InternalNote[]
+
   @@index([requesterId])
   @@index([createdAt])
   @@index([ticketOwnerId])
   @@index([status])
+}
+
+// Issue 37 — two separate tables, not one table with an isInternal flag: a
+// forgotten `WHERE isInternal = false` filter would leak Internal Notes to
+// a Requester through the Public Comments endpoint; with separate tables,
+// the Requester-facing endpoint structurally has no column to leak from
+// (specification.md §7). Both are append-only (BR-25) — no updatedAt, no
+// edit/delete route exists anywhere in app.ts.
+model PublicComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 // Issue 11 — Attachment lifecycle. storedName is a UUID + validated extension,
