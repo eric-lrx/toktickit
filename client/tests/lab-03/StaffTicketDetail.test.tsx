@@ -96,4 +96,24 @@ describe("StaffTicketDetail", () => {
     const options = Array.from(statusSelect.querySelectorAll("option")).map((o) => o.getAttribute("value"));
     expect(options).toEqual(["CANCELLED"]);
   });
+
+  it("UI-16 renders Public Comments and Internal Notes in two distinct panels", async () => {
+    vi.spyOn(api, "getStaffTicket").mockResolvedValue({
+      ...baseTicket,
+      publicComments: [{ id: 1, authorName: "Ada Lovelace", authorRole: "REQUESTER", content: "Any update?", createdAt: "2026-09-01T00:00:00.000Z" }],
+      internalNotes: [{ id: 1, authorName: "Katherine Johnson", content: "Escalated to network team.", createdAt: "2026-09-01T00:00:00.000Z" }],
+    });
+    renderDetail();
+
+    const publicPanel = await screen.findByTestId("public-comments-panel");
+    const internalPanel = await screen.findByTestId("internal-notes-panel");
+    expect(publicPanel).not.toBe(internalPanel);
+    expect(publicPanel.className).not.toBe(internalPanel.className);
+    expect(internalPanel).toHaveTextContent(/internal.*not visible to requester/i);
+    expect(publicPanel).toHaveTextContent("Any update?");
+    expect(internalPanel).toHaveTextContent("Escalated to network team.");
+    // Cross-check: neither panel's content leaked into the other.
+    expect(publicPanel).not.toHaveTextContent("Escalated to network team.");
+    expect(internalPanel).not.toHaveTextContent("Any update?");
+  });
 });

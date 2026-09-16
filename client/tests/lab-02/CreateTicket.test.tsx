@@ -73,6 +73,7 @@ describe("CreateTicket", () => {
       resolutionSummary: null,
       requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     await screen.findByText(/TKT-2026-000001/);
   });
@@ -94,6 +95,7 @@ describe("CreateTicket", () => {
       resolutionSummary: null,
       requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     renderCreateTicket();
     await fillValidForm();
@@ -130,6 +132,7 @@ describe("CreateTicket", () => {
       resolutionSummary: null,
       requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     renderCreateTicket();
     await fillValidForm();
@@ -156,6 +159,7 @@ describe("CreateTicket", () => {
       resolutionSummary: null,
       requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     renderCreateTicket();
     await fillValidForm();
