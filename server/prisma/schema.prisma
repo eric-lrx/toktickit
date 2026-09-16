@@ -18,14 +18,26 @@ model Category {
   tickets   Ticket[]
 }
 
-// Lab 2 — temporary Development Requester "fake login" (BR-03). Not authentication.
-model RequesterUser {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  tickets   Ticket[]
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
+}
+
+// Lab 3 — renamed in place from RequesterUser (Lab 2's temporary "fake login",
+// BR-03). Real authentication: bcrypt passwordHash, one role, mustChangePassword
+// gate (specification.md §7/§11, BR-01/BR-02/BR-06).
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tickets            Ticket[]
 }
 
 model RelatedSystem {
@@ -51,7 +63,7 @@ model Ticket {
   id                Int               @id @default(autoincrement())
   ticketNumber      String            @unique
   requesterId       Int
-  requester         RequesterUser     @relation(fields: [requesterId], references: [id])
+  requester         User              @relation(fields: [requesterId], references: [id])
   categoryId        Int
   category          Category          @relation(fields: [categoryId], references: [id])
   relatedSystemId   Int

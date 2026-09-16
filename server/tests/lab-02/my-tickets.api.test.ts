@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
+import { hashPassword } from "../../src/password.js";
 
 // Requires the DB to be migrated and seeded first (npx prisma migrate dev && npm run prisma:seed).
 
@@ -28,7 +29,7 @@ async function createTicket(requesterId: number, overrides: Record<string, unkno
 
 beforeAll(async () => {
   const prisma = getPrisma();
-  const activeRequesters = await prisma.requesterUser.findMany({ where: { isActive: true }, take: 2 });
+  const activeRequesters = await prisma.user.findMany({ where: { isActive: true, role: "REQUESTER" }, take: 2 });
   requesterAId = activeRequesters[0].id;
   requesterBId = activeRequesters[1].id;
   const category = await prisma.category.findFirstOrThrow({ where: { isActive: true } });
@@ -60,8 +61,15 @@ describe("GET /api/tickets", () => {
   });
 
   it("returns only Tickets matching every applied filter together", async () => {
-    const fresh = await getPrisma().requesterUser.create({
-      data: { name: "Filter Test Requester", email: `filter-${Date.now()}@example.com`, isActive: true },
+    const fresh = await getPrisma().user.create({
+      data: {
+        name: "Filter Test Requester",
+        email: `filter-${Date.now()}@example.com`,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: await hashPassword("Valid123!"),
+        mustChangePassword: true,
+      },
     });
     const matching = await createTicket(fresh.id, {
       relatedSystemId: otherRelatedSystemId,
@@ -118,8 +126,15 @@ describe("GET /api/tickets", () => {
   });
 
   it("returns an empty list for a Requester with zero Tickets", async () => {
-    const freshRequester = await getPrisma().requesterUser.create({
-      data: { name: "Fresh Requester", email: `fresh-${Date.now()}@example.com`, isActive: true },
+    const freshRequester = await getPrisma().user.create({
+      data: {
+        name: "Fresh Requester",
+        email: `fresh-${Date.now()}@example.com`,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: await hashPassword("Valid123!"),
+        mustChangePassword: true,
+      },
     });
     const res = await request(app).get("/api/tickets").set("X-Dev-Requester-Id", String(freshRequester.id));
     expect(res.status).toBe(200);

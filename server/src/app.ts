@@ -1,5 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import path from "path";
 import multer from "multer";
 import { Prisma } from "@prisma/client";
@@ -7,13 +8,30 @@ import { getPrisma } from "./prisma.js";
 import { requireActiveRequester, RequesterRequest } from "./requesterAuth.js";
 import { nextTicketNumber, withUniqueTicketNumber } from "./ticketNumber.js";
 import { deleteFiles, MAX_ACTIVE_ATTACHMENTS, UnsupportedFileTypeError, uploadAttachments, UPLOAD_DIR } from "./attachmentStorage.js";
+import { hashPassword, passwordRuleViolations, verifyPassword } from "./password.js";
+import {
+  AuthedRequest,
+  attachSession,
+  clearSessionCookie,
+  requireAuth,
+  requirePasswordChanged,
+  revokeSession,
+  setSessionCookie,
+  signSession,
+} from "./session.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors());          // already wired: lets the Vite dev server call this API
+// Lab 3 (Issue 32) — credentials:true + an explicit origin (never a
+// wildcard) is required for the browser to send/receive the session cookie
+// across the Vite (5173) <-> API (3000) ports (specification.md §11).
+app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
+app.use(attachSession);
+app.use(requirePasswordChanged);
 
 // ---------------------------------------------------------------------------
 // Issue 2 — API health check
@@ -59,10 +77,15 @@ app.get("/api/related-systems", async (_req: Request, res: Response) => {
   }
 });
 
+// Lab 3 (Issue 32) — the User table now also holds IT Staff and
+// Administrator rows, so this legacy list must filter to role: "REQUESTER"
+// or the Development Requester selector would start leaking staff/admin
+// identities. The selector itself is removed in Issue 33; until then it
+// must keep working exactly as it did in Lab 2.
 app.get("/api/requesters", async (_req: Request, res: Response) => {
   try {
-    const requesters = await getPrisma().requesterUser.findMany({
-      where: { isActive: true },
+    const requesters = await getPrisma().user.findMany({
+      where: { isActive: true, role: "REQUESTER" },
       orderBy: { id: "asc" },
       select: { id: true, name: true, email: true },
     });
@@ -404,6 +427,114 @@ app.delete("/api/attachments/:id", requireActiveRequester, async (req: Requester
     res.status(200).json({ data: updated });
   } catch {
     res.status(500).json({ error: { message: "Unable to remove attachment" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Issue 32 — Authentication foundation.
+// ---------------------------------------------------------------------------
+const GENERIC_LOGIN_ERROR = { error: { message: "Invalid email or password." } };
+
+app.post("/api/auth/login", async (req: Request, res: Response) => {
+  const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!email || !password) {
+    res.status(400).json({ error: { message: "email and password are required" } });
+    return;
+  }
+
+  try {
+    const user = await getPrisma().user.findUnique({ where: { email } });
+    // BR-08 — identical response whether the email is unknown, the password
+    // is wrong, or the account is inactive: none of the three should be
+    // distinguishable to someone probing which emails exist.
+    if (!user || !user.isActive || !(await verifyPassword(password, user.passwordHash))) {
+      res.status(401).json(GENERIC_LOGIN_ERROR);
+      return;
+    }
+
+    const token = signSession({ id: user.id, role: user.role, mustChangePassword: user.mustChangePassword });
+    setSessionCookie(res, token);
+    res.status(200).json({
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.mustChangePassword,
+      },
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to log in" } });
+  }
+});
+
+app.post("/api/auth/logout", requireAuth, (req: AuthedRequest, res: Response) => {
+  revokeSession(req);
+  clearSessionCookie(res);
+  res.status(200).json({ data: { loggedOut: true } });
+});
+
+app.get("/api/auth/me", requireAuth, async (req: AuthedRequest, res: Response) => {
+  try {
+    const user = await getPrisma().user.findUnique({ where: { id: req.user!.id } });
+    if (!user) {
+      res.status(401).json({ error: { message: "Authentication required" } });
+      return;
+    }
+    res.status(200).json({
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.mustChangePassword,
+      },
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load current user" } });
+  }
+});
+
+app.post("/api/auth/change-password", requireAuth, async (req: AuthedRequest, res: Response) => {
+  const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
+  const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: { message: "currentPassword and newPassword are required" } });
+    return;
+  }
+
+  try {
+    const user = await getPrisma().user.findUniqueOrThrow({ where: { id: req.user!.id } });
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      res.status(401).json({ error: { message: "Current password is incorrect" } });
+      return;
+    }
+
+    const violations = passwordRuleViolations(newPassword);
+    if (violations.length > 0) {
+      res.status(400).json({ error: { message: violations.join("; ") } });
+      return;
+    }
+    if (newPassword === currentPassword) {
+      res.status(400).json({ error: { message: "newPassword must be different from currentPassword" } });
+      return;
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await getPrisma().user.update({ where: { id: user.id }, data: { passwordHash, mustChangePassword: false } });
+
+    // Re-sign the cookie with mustChangePassword:false — the old token has
+    // the old value baked in (a JWT can't be edited in place), so without
+    // this the gate would keep firing on the very session that just
+    // satisfied it. The old token is also revoked, closing the tiny window
+    // where both would otherwise verify.
+    revokeSession(req);
+    const token = signSession({ id: user.id, role: user.role, mustChangePassword: false });
+    setSessionCookie(res, token);
+    res.status(200).json({ data: { mustChangePassword: false } });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to change password" } });
   }
 });
 

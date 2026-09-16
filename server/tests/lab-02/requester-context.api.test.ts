@@ -35,4 +35,13 @@ describe("GET /api/requesters", () => {
     expect(emails).toContain("ada.lovelace@example.com");
     expect(emails).not.toContain("ivy.inactive@example.com");
   });
+
+  // Lab 3 (Issue 32) regression: the User table now also holds IT Staff and
+  // Administrator rows. This route must stay scoped to role: "REQUESTER".
+  it("never includes a seeded IT Staff or Administrator account", async () => {
+    const res = await request(app).get("/api/requesters");
+    const emails = res.body.map((r: { email: string }) => r.email);
+    expect(emails).not.toContain("margaret.hamilton@toktickit.com");
+    expect(emails).not.toContain("barbara.liskov@toktickit.com");
+  });
 });

@@ -33,7 +33,7 @@ function attachOne(ticketId: number, requesterId: number, filename = "photo.jpg"
 
 beforeAll(async () => {
   const prisma = getPrisma();
-  const activeRequesters = await prisma.requesterUser.findMany({ where: { isActive: true }, take: 2 });
+  const activeRequesters = await prisma.user.findMany({ where: { isActive: true, role: "REQUESTER" }, take: 2 });
   requesterAId = activeRequesters[0].id;
   requesterBId = activeRequesters[1].id;
   const category = await prisma.category.findFirstOrThrow({ where: { isActive: true } });
