@@ -161,8 +161,26 @@ export interface Ticket {
   requesterResolutionIndicatedAt: string | null;
 }
 
+// Issue 37 — authorRole lets the UI badge who wrote each comment
+// (Requester/IT Staff/Administrator), per ui-spec.md §5.
+export interface PublicComment {
+  id: number;
+  authorName: string;
+  authorRole: Role;
+  content: string;
+  createdAt: string;
+}
+
+export interface InternalNote {
+  id: number;
+  authorName: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface TicketDetail extends Ticket {
   attachments: Attachment[];
+  publicComments: PublicComment[];
 }
 
 export interface CreateTicketInput {
@@ -461,8 +479,8 @@ export async function getStaffQueue(query: StaffQueueQuery): Promise<StaffQueueR
 export interface StaffTicketDetail extends StaffTicket {
   categoryName: string;
   attachments: Attachment[];
-  publicComments: unknown[];
-  internalNotes: unknown[];
+  publicComments: PublicComment[];
+  internalNotes: InternalNote[];
 }
 
 async function readStaffError(res: Response, fallback: string): Promise<string> {
@@ -527,4 +545,31 @@ export async function indicateResolution(id: number): Promise<void> {
     credentials: "include",
   });
   if (!res.ok) throw new Error(await readStaffError(res, "Unable to record your response. Please try again."));
+}
+
+// Issue 37 — Public Comments (owning Requester or any IT Staff) and
+// Internal Notes (IT Staff only). Both append-only: no update/remove calls
+// exist because no such route exists server-side (BR-25).
+export async function postComment(ticketId: number, content: string): Promise<PublicComment> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/comments`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to post your comment. Please try again."));
+  const json = await res.json();
+  return json.data;
+}
+
+export async function postNote(ticketId: number, content: string): Promise<InternalNote> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/notes`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to post the internal note. Please try again."));
+  const json = await res.json();
+  return json.data;
 }

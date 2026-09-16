@@ -64,8 +64,8 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| AUTHZ-01 | Security | AC-04 | Requester calls GET internal notes directly | 403, no note content in body | server/tests/lab-03/authorization.api.test.ts | Pending |
-| AUTHZ-02 | Security | AC-04 | Requester calls POST internal notes directly | 403, note not created | server/tests/lab-03/authorization.api.test.ts | Pending |
+| AUTHZ-01 | Security | AC-04 | Requester calls GET internal notes directly | 403, no note content in body | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| AUTHZ-02 | Security | AC-04 | Requester calls POST internal notes directly | 403, note not created | server/tests/lab-03/comments-notes.api.test.ts | Pass |
 | AUTHZ-03 | Security | AC-16 | Requester calls GET /api/staff/tickets | 403 | server/tests/lab-03/staff-queue.api.test.ts | Pass |
 | AUTHZ-04 | Security | FR-13 | Requester calls PATCH owner/priority/status directly | 403 on all three | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
 | AUTHZ-05 | Security | AC-10 | Requester calls PATCH status directly with any target status | 403 regardless of target | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
@@ -85,7 +85,9 @@ the endpoint it guards (`staff-queue.api.test.ts`,
 `staff-ticket-detail.api.test.ts`) rather than duplicated here too — this
 file stays the home for the cross-cutting/subtle cases (no session, a
 tampered JWT, identity spoofing) that don't belong to any one feature's own
-file. AUTHZ-01/02 need Issue 37 (notes); 06/07 need Issue 38 (admin routes).
+file. AUTHZ-01/02 (Issue 37) moved the same way, into
+`comments-notes.api.test.ts` alongside the notes routes they guard; 06/07
+still need Issue 38 (admin routes).
 
 ### API — Requester regression (migrated Lab 2 routes)
 
@@ -145,16 +147,16 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| CN-01 | API | FR-09 | Requester posts a Public Comment on own Ticket | 201 | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-02 | API | FR-09 | Requester posts a Public Comment on a Ticket they don't own | 404 | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-03 | API | BR-26 | Post empty/whitespace-only comment | 400 | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-04 | API | BR-26 | Post comment over 4000 chars | 400 | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-05 | API | FR-16 | IT Staff posts a Public Comment | 201 | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-06 | API | BR-04 | GET comments as Requester, IT Staff, Administrator | All three see the same list | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-07 | API | FR-16 | IT Staff creates an Internal Note | 201 | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-08 | API | AC-12, BR-04 | Requester fetches Ticket detail after a Note is posted | Note absent anywhere in the response | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-09 | API | BR-25 | No edit/delete route exists for either model | Attempting one returns 404/405 | server/tests/lab-03/comments-notes.api.test.ts | Pending |
-| CN-10 | API | BR-27 | Author/timestamp always come from the backend | Client-supplied authorId/createdAt in body ignored | server/tests/lab-03/comments-notes.api.test.ts | Pending |
+| CN-01 | API | FR-09 | Requester posts a Public Comment on own Ticket | 201 | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-02 | API | FR-09 | Requester posts a Public Comment on a Ticket they don't own | 404 | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-03 | API | BR-26 | Post empty/whitespace-only comment | 400 | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-04 | API | BR-26 | Post comment over 4000 chars | 400 | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-05 | API | FR-16 | IT Staff posts a Public Comment | 201 | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-06 | API | BR-04 | GET comments as Requester, IT Staff, Administrator | All three see the same list | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-07 | API | FR-16 | IT Staff creates an Internal Note | 201 | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-08 | API | AC-12, BR-04 | Requester fetches Ticket detail after a Note is posted | Note absent anywhere in the response | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-09 | API | BR-25 | No edit/delete route exists for either model | Attempting one returns 404/405 | server/tests/lab-03/comments-notes.api.test.ts | Pass |
+| CN-10 | API | BR-27 | Author/timestamp always come from the backend | Client-supplied authorId/createdAt in body ignored | server/tests/lab-03/comments-notes.api.test.ts | Pass |
 
 ### API — Administrator (`users-admin.api.test.ts`)
 
@@ -197,7 +199,7 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 | UI-13 | UI | FR-11 | Queue forbidden state (mocked 403) | Redirect/forbidden message, not a raw error | client/tests/lab-03/StaffTicketQueue.test.tsx | Pass |
 | UI-14 | UI | FR-13 | Claim button, unassigned Ticket | Calls owner endpoint with the current user | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
 | UI-15 | UI | FR-15 | Status dropdown only offers allowed transitions | Options match the mocked allowed-transitions list | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
-| UI-16 | UI | BR-04 | Public Comments and Internal Notes render in visually distinct panels | Both present, distinguishable by test id/class | client/tests/lab-03/StaffTicketDetail.test.tsx | Pending |
+| UI-16 | UI | BR-04 | Public Comments and Internal Notes render in visually distinct panels | Both present, distinguishable by test id/class | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
 | UI-17 | UI | FR-18 | User list renders Name/Email/Role/Status/Edit | All columns present | client/tests/lab-03/UserManagement.test.tsx | Pending |
 | UI-18 | UI | FR-18 | Search + role filter | Filters the rendered list | client/tests/lab-03/UserManagement.test.tsx | Pending |
 | UI-19 | UI | AC-15 | Create user, mocked 409 duplicate email | Field-level error shown | client/tests/lab-03/UserManagement.test.tsx | Pending |
@@ -487,3 +489,69 @@ correctly). Separately, logged in as Alan Turing (Requester) on one of his
 own NEW Tickets, clicked "Mark problem as resolved," confirmed the exact
 confirmation copy from ui-spec.md §6 appeared and the Status badge stayed
 unchanged (New) — the signal never touches formal status.
+
+### Issue 37 — Public Comments and Internal Notes
+
+`PublicComment` and `InternalNote` are separate Prisma models/tables, not one
+table with an `isInternal` flag — the leak-prevention argument from
+specification.md holds structurally: a route that queries `PublicComment`
+has no way to accidentally return a Note, because there is no column, no
+flag, and no shared query path to get it wrong on. `POST/GET
+/api/tickets/:id/comments` mixes Requester-ownership (404, not 403, on a
+Ticket the caller doesn't own — BR-16) with IT_STAFF-any-Ticket access, and
+flatly 403s an Administrator on POST regardless of ownership, consistent
+with its read-only role everywhere else in the workflow. `POST/GET
+/api/tickets/:id/notes` reuse `requireStaffWrite`/`requireStaffRead`
+(IT_STAFF and Administrator respectively — Administrator can read Notes,
+per FR-22, but never write anywhere in the workflow). `GET
+/api/tickets/:id` (Requester) now returns real `publicComments` and never an
+`internalNotes` key at all; `GET /api/staff/tickets/:id` returns both real
+arrays, replacing Issue 36's hardcoded `[]` placeholder.
+
+While writing this Issue's tests, the Authorization Matrix (added in Issue
+33) turned up two places where earlier prose had drifted from it:
+specification.md's BR-21 said IT Priority could be changed "by IT Staff or
+Administrator" (the matrix says IT_STAFF only), and api-spec.md's POST
+comments/notes sections said Administrator "may post"/could act (the matrix
+says Administrator is read-only on the whole Ticket workflow). Both were
+already implemented correctly — only the prose was stale — so both were
+fixed to match the matrix rather than the other way around.
+
+`cd server && npm test`: **140/140 passed** (16 files) — 17 new
+`comments-notes.api.test.ts` tests covering CN-01..10 plus AUTHZ-01/02
+(colocated with the notes routes they guard, the same refinement as
+AUTHZ-03/04/05/11/12 in Issues 35/36) plus two Administrator-rejection
+cases and a cross-Requester-404 case that weren't in the original plan but
+follow directly from the Authorization Matrix fixes above. `cd client && npm
+test`: **51/51 passed** (13 files) — 1 new `StaffTicketDetail.test.tsx` test
+(UI-16). Both `npx tsc --noEmit` clean.
+
+`CommentPanel.tsx` is the one component behind both variants
+(`data-testid="public-comments-panel"`/`"internal-notes-panel"`, an
+"Internal — not visible to Requester" label on the internal variant only) —
+`StaffTicketDetail.tsx` renders both, `RequesterTicketDetail.tsx` renders
+only the public one. Internal Notes never appear anywhere in a Requester
+session's code path — there's no conditional hiding a Requester could see
+around, because the component simply isn't imported for that panel and the
+API response the screen consumes has no field to render even if it were.
+
+Adding the Public Comments panel to `RequesterTicketDetail.tsx` broke one
+pre-existing Lab 2 test (`tests/lab-02/RequesterTicketDetail.test.tsx`),
+which asserted zero textboxes anywhere on the page as a proxy for "the
+Ticket's fields are read-only." That proxy was never precise — the fields'
+read-only-ness was already independently confirmed by the `getByText`
+checks above it — so the assertion was narrowed to what it actually meant:
+exactly one textbox exists, and it's the comment box, not a field editor.
+
+Manual browser verification end-to-end, three real accounts, one real
+Ticket: logged in as Ada Lovelace (Requester), posted a Public Comment;
+logged in as Margaret Hamilton (IT Staff), opened the same Ticket, saw
+Ada's comment, posted a Public Comment and an Internal Note — both panels
+rendered distinctly, each showing only its own entry; logged back in as Ada
+and confirmed both Public Comments were visible but the Internal Notes
+heading, its "not visible to Requester" label, and the note's text appeared
+nowhere in the page — and, checking past the DOM to the wire itself, the
+`GET /api/tickets/:id` response body for Ada's session had no
+`internalNotes` key at all, confirming the absence is structural and not a
+client-side filter that a determined user could bypass by reading the
+network tab.

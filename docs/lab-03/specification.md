@@ -178,7 +178,9 @@ operation on that resource is not.
   assigns a different user. Both are IT-Staff-only operations.
 - **BR-21** Requested Priority is set once by the Requester at creation and never
   changes. IT Priority initially copies Requested Priority and can only be changed
-  afterward by IT Staff or Administrator.
+  afterward by IT Staff (corrected from an earlier draft: the Authorization Matrix
+  in §4 is authoritative — Administrator is read-only on the ticket workflow, this
+  included — and Issue 36's implementation already followed the matrix).
 - **BR-22** `TicketStatus` transitions are enforced server-side against a fixed
   transition table (§7), never by ad hoc conditionals. An attempted transition not in
   the table returns `409` naming the current status and the allowed next statuses.
