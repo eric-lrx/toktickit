@@ -13,21 +13,40 @@ import { loginAs } from "./testAuth.js";
 
 describe("MIG-04 — every pre-existing Ticket has itPriority backfilled from requestedPriority", () => {
   it("matches requestedPriority for every Ticket that predates the Issue 35 migration", async () => {
-    // Excludes known test-fixture ticket numbers: TKT-9999-* (prisma/seed.ts)
-    // deliberately gives a few Tickets an IT-adjusted itPriority to simulate
-    // realistic history, and TKT-TEST-* (staff-ticket-detail.api.test.ts's
-    // STAFF-D-07) deliberately changes itPriority via the real PATCH route
-    // to prove requestedPriority stays untouched. Both are legitimate
-    // divergences created *after* the migration, not migration regressions.
-    // Prisma's query builder can't compare two columns of the same row
-    // portably, so this counts mismatches directly in SQL.
-    const result = await getPrisma().$queryRaw<{ mismatched: bigint }[]>`
-      SELECT count(*) AS mismatched FROM "Ticket"
-      WHERE "itPriority" != "requestedPriority"
-        AND "ticketNumber" NOT LIKE 'TKT-9999-%'
-        AND "ticketNumber" NOT LIKE 'TKT-TEST-%'
+    // Scoped to Tickets that existed BEFORE the itPriority column did
+    // (createdAt earlier than that migration's own recorded finished_at,
+    // read from Prisma's own migration history) — not "every Ticket minus a
+    // growing list of known-divergent fixtures by ticket-number prefix,"
+    // which broke three separate times over this sprint as new, entirely
+    // legitimate sources of post-migration divergence kept appearing
+    // (Issue 35's seed fixtures, Issue 36's STAFF-D-07, and now Issue 39's
+    // own E2E Tickets — which get real auto-generated ticket numbers with
+    // no distinguishing prefix to exclude by at all). A Ticket created
+    // after the migration ran gets its itPriority from BR-35's ongoing
+    // "copies requestedPriority at creation" rule, not from the backfill —
+    // it was never this test's subject to begin with, regardless of what
+    // created it or what its ticket number looks like.
+    //
+    // The date cutoff and the two-column comparison are deliberately split
+    // across two separate steps rather than one raw-SQL query: a first
+    // attempt compared "createdAt" (timestamp, no time zone) directly
+    // against _prisma_migrations.finished_at (timestamptz) in one SQL
+    // expression, and this session's Postgres timezone (Asia/Bangkok,
+    // UTC+7) silently shifted that comparison by 7 hours, mis-scoping
+    // dozens of genuinely post-migration Tickets as "pre-migration."
+    // Prisma's own query builder resolves a JS Date consistently regardless
+    // of session time zone, so the date filter goes through `findMany`
+    // here; only the actual two-column comparison — which Prisma's query
+    // builder can't express portably — happens in plain JS afterward.
+    const migration = await getPrisma().$queryRaw<{ finished_at: Date }[]>`
+      SELECT finished_at FROM "_prisma_migrations" WHERE migration_name = '20260916121616_lab3_ticket_workflow_fields'
     `;
-    expect(Number(result[0].mismatched)).toBe(0);
+    const preMigrationTickets = await getPrisma().ticket.findMany({
+      where: { createdAt: { lt: migration[0].finished_at } },
+      select: { itPriority: true, requestedPriority: true },
+    });
+    const mismatched = preMigrationTickets.filter((t) => t.itPriority !== t.requestedPriority);
+    expect(mismatched.length).toBe(0);
   });
 });
 
