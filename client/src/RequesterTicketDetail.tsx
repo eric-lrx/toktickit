@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
 import AttachmentSection from "./components/AttachmentSection.js";
-import { addAttachments, Attachment, downloadAttachment, getTicket, removeAttachment, TicketDetail } from "./api.js";
+import {
+  addAttachments,
+  Attachment,
+  downloadAttachment,
+  getTicket,
+  indicateResolution,
+  removeAttachment,
+  TicketDetail,
+} from "./api.js";
+import { STATUS_LABELS, statusTone } from "./ticketStatus.js";
 
 type LoadState = "loading" | "loaded" | "error";
 
@@ -27,6 +36,8 @@ export default function RequesterTicketDetail() {
   const [attachmentError, setAttachmentError] = useState("");
   const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null);
   const [removalReason, setRemovalReason] = useState("");
+  const [resolutionState, setResolutionState] = useState<"idle" | "sending" | "sent">("idle");
+  const [resolutionError, setResolutionError] = useState("");
 
   async function loadTicket() {
     const t = await getTicket(Number(id));
@@ -80,6 +91,20 @@ export default function RequesterTicketDetail() {
     setAttachmentError("");
   }
 
+  async function handleIndicateResolution() {
+    if (!id) return;
+    setResolutionState("sending");
+    setResolutionError("");
+    try {
+      await indicateResolution(Number(id));
+      setResolutionState("sent");
+      await loadTicket();
+    } catch (err) {
+      setResolutionError(err instanceof Error ? err.message : "Unable to record your response.");
+      setResolutionState("idle");
+    }
+  }
+
   async function confirmRemove() {
     if (pendingRemoveId === null || !removalReason.trim()) return;
     try {
@@ -112,7 +137,7 @@ export default function RequesterTicketDetail() {
       >
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <h2 className="h5 mb-0">{ticket.ticketNumber}</h2>
-          <Badge tone="pale">{ticket.status}</Badge>
+          <Badge tone={statusTone(ticket.status)}>{STATUS_LABELS[ticket.status]}</Badge>
         </div>
         <small className="text-muted">
           Created {new Date(ticket.createdAt).toLocaleString()} · Updated{" "}
@@ -120,12 +145,42 @@ export default function RequesterTicketDetail() {
         </small>
       </div>
 
-      <div className="row mb-4">
+      <div className="row mb-4 align-items-start">
         <div className="col-sm-4">
           <p className="small fw-semibold mb-1">Requested Priority</p>
           <Badge tone={priorityTone(ticket.requestedPriority)}>{ticket.requestedPriority}</Badge>
         </div>
+        <div className="col-sm-8">
+          {ticket.requesterResolutionIndicatedAt || resolutionState === "sent" ? (
+            <p className="mb-0" style={{ color: "var(--zg-secondary)" }}>
+              Thanks — IT Staff will confirm and close this ticket.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={handleIndicateResolution}
+              disabled={resolutionState === "sending"}
+            >
+              {resolutionState === "sending" ? "Sending…" : "Mark problem as resolved"}
+            </button>
+          )}
+          {resolutionError && (
+            <p role="alert" style={{ color: "var(--zg-error)" }} className="small mt-1 mb-0">
+              {resolutionError}
+            </p>
+          )}
+        </div>
       </div>
+
+      {ticket.resolutionSummary && (
+        <div className="mb-4">
+          <p className="small fw-semibold mb-1">Resolution Summary</p>
+          <p style={{ background: "var(--zg-readonly-bg)", whiteSpace: "pre-wrap" }} className="p-2 rounded">
+            {ticket.resolutionSummary}
+          </p>
+        </div>
+      )}
 
       <div className="mb-4">
         <p className="small fw-semibold mb-1">Summary</p>

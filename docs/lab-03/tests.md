@@ -37,7 +37,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| UNIT-01 | Unit | BR-22 | Status transition table lookup | Returns allowed next statuses for each of the 8 statuses; empty set for Cancelled | server/tests/lab-03/status-transitions.unit.test.ts | Pending |
+| UNIT-01 | Unit | BR-22 | Status transition table lookup | Returns allowed next statuses for each of the 8 statuses; empty set for Cancelled | server/tests/lab-03/status-transitions.unit.test.ts | Pass |
 | UNIT-02 | Unit | BR-11 | Password rule validator | Rejects short/no-uppercase/no-digit/no-special-char passwords; accepts a compliant one | server/tests/lab-03/password-rules.unit.test.ts | Pass |
 | UNIT-03 | Unit | BR-06 | Password hashing helper | bcrypt hash differs from plaintext; verifies correctly against the original password | server/tests/lab-03/password-rules.unit.test.ts | Pass |
 
@@ -67,26 +67,25 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 | AUTHZ-01 | Security | AC-04 | Requester calls GET internal notes directly | 403, no note content in body | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-02 | Security | AC-04 | Requester calls POST internal notes directly | 403, note not created | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-03 | Security | AC-16 | Requester calls GET /api/staff/tickets | 403 | server/tests/lab-03/staff-queue.api.test.ts | Pass |
-| AUTHZ-04 | Security | FR-13 | Requester calls PATCH owner/priority/status directly | 403 on all three | server/tests/lab-03/authorization.api.test.ts | Pending |
-| AUTHZ-05 | Security | AC-10 | Requester calls PATCH status directly with any target status | 403 regardless of target | server/tests/lab-03/authorization.api.test.ts | Pending |
+| AUTHZ-04 | Security | FR-13 | Requester calls PATCH owner/priority/status directly | 403 on all three | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| AUTHZ-05 | Security | AC-10 | Requester calls PATCH status directly with any target status | 403 regardless of target | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
 | AUTHZ-06 | Security | AC-16 | IT Staff calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-07 | Security | AC-16 | Requester calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-08 | Security | BR-14 | Any protected route with no session at all | 401, not 403 | server/tests/lab-03/authorization.api.test.ts | Pass |
 | AUTHZ-09 | Security | BR-14 | Any protected route with a tampered/invalid JWT | 401 | server/tests/lab-03/authorization.api.test.ts | Pass |
 | AUTHZ-10 | Security | AC-03, BR-03 | Authenticated Requester supplies a different requesterId in the body/query | Backend ignores it, uses session identity only | server/tests/lab-03/authorization.api.test.ts | Pass |
-| AUTHZ-11 | Security | FR-06 | Administrator calls a Ticket-workflow write route (owner/priority/status) | 403 (read-only per §11 decision) | server/tests/lab-03/authorization.api.test.ts | Pending |
-| AUTHZ-12 | Security | FR-22 | Administrator calls GET staff ticket detail (read) | 200, allowed | server/tests/lab-03/authorization.api.test.ts | Pending |
+| AUTHZ-11 | Security | FR-06 | Administrator calls a Ticket-workflow write route (owner/priority/status) | 403 (read-only per §11 decision) | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| AUTHZ-12 | Security | FR-22 | Administrator calls GET staff ticket detail (read) | 200, allowed | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
 
 AUTHZ-08/09 test the `requireRole` middleware itself, mounted on a throwaway
 route (Issue 33) — no staff/admin/notes route existed yet to hang them on.
-AUTHZ-10 landed with Issue 34's real Requester routes. AUTHZ-03 (Issue 35)
-is a refinement of the original plan: it lives in `staff-queue.api.test.ts`
-alongside the endpoint it guards, rather than duplicated here too — this
+AUTHZ-10 landed with Issue 34's real Requester routes. AUTHZ-03/04/05/11/12
+(Issues 35/36) are a refinement of the original plan: each lives alongside
+the endpoint it guards (`staff-queue.api.test.ts`,
+`staff-ticket-detail.api.test.ts`) rather than duplicated here too — this
 file stays the home for the cross-cutting/subtle cases (no session, a
 tampered JWT, identity spoofing) that don't belong to any one feature's own
-file. AUTHZ-01/02 need Issue 37 (notes), 05 needs Issue 36 (the detail
-route it calls), 06/07 need Issue 38 (admin routes), 11/12 need Issue 36
-(staff ticket detail).
+file. AUTHZ-01/02 need Issue 37 (notes); 06/07 need Issue 38 (admin routes).
 
 ### API — Requester regression (migrated Lab 2 routes)
 
@@ -129,18 +128,18 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| STAFF-D-01 | API | FR-12 | GET staff ticket detail | 200, includes attachments + comments + notes together | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-02 | API | FR-12 | GET staff ticket detail, nonexistent id | 404 | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-03 | API | AC-08, FR-13 | Claim an unassigned Ticket | 200, ticketOwnerId = caller | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-04 | API | FR-13 | Reassign to another active IT Staff user | 200, ticketOwnerId updated | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-05 | API | BR-19 | Assign an inactive user as owner | 400 | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-06 | API | BR-19 | Assign a Requester-role user as owner | 400 | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-07 | API | FR-14, BR-21 | Update IT Priority | 200, itPriority changed; requestedPriority unchanged | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-08 | API | FR-15 | Valid status transition (e.g. New→Open) | 200, status updated | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-09 | API | AC-09, BR-22 | Disallowed status transition (New→Resolved) | 409, message names current + allowed statuses | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-10 | API | BR-23 | Any transition attempted from Cancelled | 409, empty allowed list | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-11 | API | FR-17, BR-24 | Move to Resolved with a resolutionSummary | 200, resolutionSummary saved | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
-| STAFF-D-12 | API | AC-11, FR-10 | Requester posts resolution-indicated signal | requesterResolutionIndicatedAt set, status unchanged | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pending |
+| STAFF-D-01 | API | FR-12 | GET staff ticket detail | 200, includes attachments + comments + notes together | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-02 | API | FR-12 | GET staff ticket detail, nonexistent id | 404 | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-03 | API | AC-08, FR-13 | Claim an unassigned Ticket | 200, ticketOwnerId = caller | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-04 | API | FR-13 | Reassign to another active IT Staff user | 200, ticketOwnerId updated | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-05 | API | BR-19 | Assign an inactive user as owner | 400 | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-06 | API | BR-19 | Assign a Requester-role user as owner | 400 | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-07 | API | FR-14, BR-21 | Update IT Priority | 200, itPriority changed; requestedPriority unchanged | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-08 | API | FR-15 | Valid status transition (e.g. New→Open) | 200, status updated | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-09 | API | AC-09, BR-22 | Disallowed status transition (New→Resolved) | 409, message names current + allowed statuses | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-10 | API | BR-23 | Any transition attempted from Cancelled | 409, empty allowed list | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-11 | API | FR-17, BR-24 | Move to Resolved with a resolutionSummary | 200, resolutionSummary saved | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
+| STAFF-D-12 | API | AC-11, FR-10 | Requester posts resolution-indicated signal | requesterResolutionIndicatedAt set, status unchanged | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
 
 ### API — Public Comments and Internal Notes (`comments-notes.api.test.ts`)
 
@@ -196,8 +195,8 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 | UI-11 | UI | FR-11 | Queue renders rows with all badges | Ticket Number, Status, Requested + IT Priority, Owner all visible | client/tests/lab-03/StaffTicketQueue.test.tsx | Pass |
 | UI-12 | UI | FR-11 | Queue empty state vs no-results state | Correct message for each, distinguishable | client/tests/lab-03/StaffTicketQueue.test.tsx | Pass |
 | UI-13 | UI | FR-11 | Queue forbidden state (mocked 403) | Redirect/forbidden message, not a raw error | client/tests/lab-03/StaffTicketQueue.test.tsx | Pass |
-| UI-14 | UI | FR-13 | Claim button, unassigned Ticket | Calls owner endpoint with the current user | client/tests/lab-03/StaffTicketDetail.test.tsx | Pending |
-| UI-15 | UI | FR-15 | Status dropdown only offers allowed transitions | Options match the mocked allowed-transitions list | client/tests/lab-03/StaffTicketDetail.test.tsx | Pending |
+| UI-14 | UI | FR-13 | Claim button, unassigned Ticket | Calls owner endpoint with the current user | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
+| UI-15 | UI | FR-15 | Status dropdown only offers allowed transitions | Options match the mocked allowed-transitions list | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
 | UI-16 | UI | BR-04 | Public Comments and Internal Notes render in visually distinct panels | Both present, distinguishable by test id/class | client/tests/lab-03/StaffTicketDetail.test.tsx | Pending |
 | UI-17 | UI | FR-18 | User list renders Name/Email/Role/Status/Edit | All columns present | client/tests/lab-03/UserManagement.test.tsx | Pending |
 | UI-18 | UI | FR-18 | Search + role filter | Filters the rendered list | client/tests/lab-03/UserManagement.test.tsx | Pending |
@@ -438,3 +437,53 @@ names, real category names) and the mobile card layout (no horizontal
 scroll, both priority badges + owner visible) against the real seeded data,
 searching `TKT-9999` to see all 8 statuses at once with their distinct
 badge tones and labels.
+
+### Issue 36 — IT Staff Ticket Detail and workflow
+
+`server/src/statusTransitions.ts` is the sole source of truth for the
+transition matrix (UNIT-01), reused directly by `PATCH
+/api/staff/tickets/:id/status` — a disallowed transition's 409 names both
+the current state and every allowed target (e.g. "Cannot move from NEW to
+RESOLVED. Allowed: OPEN, CANCELLED."). `client/src/ticketStatus.ts` mirrors
+the same table for the Status dropdown's options (ui-spec.md §5: hiding a
+button is not authorization, so the server re-checks regardless).
+
+`GET /api/staff/tickets/:id`, `PATCH .../owner` (claim/reassign, validating
+the target is an active IT_STAFF/ADMINISTRATOR user), `PATCH .../priority`,
+`PATCH .../status` (with the resolutionSummary submitted alongside a move
+to Resolved), and `PATCH /api/tickets/:id/resolution-indicated`
+(Requester-only, sets the signal without touching status, per BR-05) are
+all implemented and guarded: `requireStaffWrite` (`IT_STAFF` only — even
+Administrator gets 403, consistent with its read-only role) for the first
+three, `requireRequester` for the last one. `GET
+/api/staff/tickets/:id`'s response hardcodes empty `publicComments`/
+`internalNotes` arrays — the shape api-spec.md already commits to, with
+real data landing in Issue 37 once those tables exist.
+
+`cd server && npm test`: **123/123 passed** (15 files) — 8 new
+`status-transitions.unit.test.ts` (UNIT-01, every matrix edge including
+terminal Cancelled) and 22 new `staff-ticket-detail.api.test.ts`
+(STAFF-D-01..12 plus AUTHZ-04/05/11/12, colocated with the routes they
+guard — the same refinement as AUTHZ-03 in Issue 35) plus everything from
+Issue 35. `cd client && npm test`: **50/50 passed** (13 files) — 4 new
+`StaffTicketDetail.test.tsx` tests (UI-14/15; UI-16 stays Pending until
+Issue 37's comment/note panels exist). Both `npx tsc --noEmit` clean.
+
+A recurring test-fragility lesson from this sprint showed up a third time:
+STAFF-D-07's fixture (proving IT Priority updates don't touch Requested
+Priority) creates a real `itPriority`/`requestedPriority` mismatch via the
+actual PATCH route, which broke MIG-04 again until its exclusion list also
+covered the `TKT-TEST-*` ticket numbers this file's fixtures use (alongside
+the `TKT-9999-*` seed exclusion already added in Issue 35) — the same
+"migration-time invariant is not a permanent one" pattern, now hit by a
+third independent source.
+
+Manual browser verification end-to-end on a real seeded Ticket: Claim (owner
+became "Margaret Hamilton", Status dropdown correctly showed only NEW's
+allowed targets: Open, Cancelled) → changed Status to Open (dropdown updated
+to Open's own allowed targets) → changed Status to Resolved (Resolution
+Summary panel appeared, saved, badge and read-only summary updated
+correctly). Separately, logged in as Alan Turing (Requester) on one of his
+own NEW Tickets, clicked "Mark problem as resolved," confirmed the exact
+confirmation copy from ui-spec.md §6 appeared and the Status badge stayed
+unchanged (New) — the signal never touches formal status.
