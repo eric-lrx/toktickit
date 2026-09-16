@@ -10,8 +10,7 @@ interface Props {
 
 // ui-spec.md §1 — nav is role-specific; a role never sees a link to a
 // destination it cannot use. IT Staff does not submit Tickets in Lab 3, and
-// Create Ticket/My Tickets are Requester-only; the Ticket Queue and Users
-// screens land in Issues 35 and 38.
+// Create Ticket/My Tickets are Requester-only.
 const NAV_BY_ROLE: Record<Role, { to: string; label: string; end?: boolean }[]> = {
   // end on "/tickets" — without it, NavLink's prefix match would also mark
   // My Tickets active while on /tickets/new or /tickets/:id.
