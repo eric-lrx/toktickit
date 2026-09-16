@@ -19,11 +19,11 @@ const sampleTicket = {
   attachments: [],
 };
 
-function renderDetail(requesterId = 1) {
+function renderDetail() {
   return render(
     <MemoryRouter initialEntries={["/tickets/1"]}>
       <Routes>
-        <Route path="/tickets/:id" element={<RequesterTicketDetail requesterId={requesterId} />} />
+        <Route path="/tickets/:id" element={<RequesterTicketDetail />} />
       </Routes>
     </MemoryRouter>
   );

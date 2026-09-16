@@ -5,7 +5,6 @@ import path from "path";
 import multer from "multer";
 import { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
-import { requireActiveRequester, RequesterRequest } from "./requesterAuth.js";
 import { nextTicketNumber, withUniqueTicketNumber } from "./ticketNumber.js";
 import { deleteFiles, MAX_ACTIVE_ATTACHMENTS, UnsupportedFileTypeError, uploadAttachments, UPLOAD_DIR } from "./attachmentStorage.js";
 import { hashPassword, passwordRuleViolations, verifyPassword } from "./password.js";
@@ -15,10 +14,17 @@ import {
   clearSessionCookie,
   requireAuth,
   requirePasswordChanged,
+  requireRole,
   revokeSession,
   setSessionCookie,
   signSession,
 } from "./session.js";
+
+// Issue 34 — every Requester route requires both a session (401 if absent)
+// and the REQUESTER role (403 for any other authenticated role); ownership
+// itself always comes from the session's id, never a client-supplied value
+// in the body/query (BR-03).
+const requireRequester = [requireAuth, requireRole("REQUESTER")];
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -159,9 +165,9 @@ async function validateTicketInput(
 // written files — no orphaned Ticket row and no orphaned file either way.
 app.post(
   "/api/tickets",
-  requireActiveRequester,
+  ...requireRequester,
   uploadAttachments.array("attachments", MAX_ACTIVE_ATTACHMENTS),
-  async (req: RequesterRequest, res: Response) => {
+  async (req: AuthedRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) ?? [];
     const result = await validateTicketInput(req.body);
     if ("errors" in result) {
@@ -177,7 +183,7 @@ app.post(
         (ticketNumber) =>
           getPrisma().$transaction(async (tx) => {
             const created = await tx.ticket.create({
-              data: { ticketNumber, requesterId: req.requesterId!, ...result.data },
+              data: { ticketNumber, requesterId: req.user!.id, ...result.data },
             });
             const attachments = await Promise.all(
               files.map((f) =>
@@ -213,7 +219,7 @@ const SORT_FIELDS = ["createdAt", "ticketNumber", "summary"] as const;
 const ORDERS = ["asc", "desc"] as const;
 const PAGE_SIZES = [10, 20, 50];
 
-app.get("/api/tickets", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+app.get("/api/tickets", ...requireRequester, async (req: AuthedRequest, res: Response) => {
   const sort = (req.query.sort as string) ?? "createdAt";
   const order = (req.query.order as string) ?? "desc";
   const pageRaw = req.query.page !== undefined ? Number(req.query.page) : 1;
@@ -236,7 +242,7 @@ app.get("/api/tickets", requireActiveRequester, async (req: RequesterRequest, re
     return;
   }
 
-  const where: Prisma.TicketWhereInput = { requesterId: req.requesterId! };
+  const where: Prisma.TicketWhereInput = { requesterId: req.user!.id };
 
   const search = req.query.search;
   if (typeof search === "string" && search.trim()) {
@@ -297,7 +303,7 @@ app.get("/api/tickets", requireActiveRequester, async (req: RequesterRequest, re
 // Ticket doesn't exist or isn't owned by the current Requester (BR-10):
 // a 403 would confirm the resource exists under someone else.
 // ---------------------------------------------------------------------------
-app.get("/api/tickets/:id", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+app.get("/api/tickets/:id", ...requireRequester, async (req: AuthedRequest, res: Response) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(404).json({ error: { message: "Ticket not found" } });
@@ -306,7 +312,7 @@ app.get("/api/tickets/:id", requireActiveRequester, async (req: RequesterRequest
 
   try {
     const ticket = await getPrisma().ticket.findUnique({ where: { id } });
-    if (!ticket || ticket.requesterId !== req.requesterId) {
+    if (!ticket || ticket.requesterId !== req.user!.id) {
       res.status(404).json({ error: { message: "Ticket not found" } });
       return;
     }
@@ -322,9 +328,9 @@ app.get("/api/tickets/:id", requireActiveRequester, async (req: RequesterRequest
 // ---------------------------------------------------------------------------
 app.post(
   "/api/tickets/:id/attachments",
-  requireActiveRequester,
+  ...requireRequester,
   uploadAttachments.array("attachments", MAX_ACTIVE_ATTACHMENTS),
-  async (req: RequesterRequest, res: Response) => {
+  async (req: AuthedRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) ?? [];
     const ticketId = Number(req.params.id);
 
@@ -339,7 +345,7 @@ app.post(
     }
 
     const ticket = await getPrisma().ticket.findUnique({ where: { id: ticketId } });
-    if (!ticket || ticket.requesterId !== req.requesterId) {
+    if (!ticket || ticket.requesterId !== req.user!.id) {
       await deleteFiles(files);
       res.status(404).json({ error: { message: "Ticket not found" } });
       return;
@@ -379,7 +385,7 @@ app.post(
 
 // Owned + active only (BR-10, BR-19): identical 404 whether the attachment
 // doesn't exist, isn't owned via its Ticket, or has been soft-removed.
-app.get("/api/attachments/:id/download", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+app.get("/api/attachments/:id/download", ...requireRequester, async (req: AuthedRequest, res: Response) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(404).json({ error: { message: "Attachment not found" } });
@@ -387,7 +393,7 @@ app.get("/api/attachments/:id/download", requireActiveRequester, async (req: Req
   }
 
   const attachment = await getPrisma().attachment.findUnique({ where: { id }, include: { ticket: true } });
-  if (!attachment || attachment.ticket.requesterId !== req.requesterId || attachment.removedAt) {
+  if (!attachment || attachment.ticket.requesterId !== req.user!.id || attachment.removedAt) {
     res.status(404).json({ error: { message: "Attachment not found" } });
     return;
   }
@@ -401,7 +407,7 @@ app.get("/api/attachments/:id/download", requireActiveRequester, async (req: Req
 
 // Soft removal only — BR-18/BR-19: reason required, only the owner (via the
 // Ticket) may remove, metadata stays visible afterward.
-app.delete("/api/attachments/:id", requireActiveRequester, async (req: RequesterRequest, res: Response) => {
+app.delete("/api/attachments/:id", ...requireRequester, async (req: AuthedRequest, res: Response) => {
   const id = Number(req.params.id);
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
   if (!reason) {
@@ -414,7 +420,7 @@ app.delete("/api/attachments/:id", requireActiveRequester, async (req: Requester
   }
 
   const attachment = await getPrisma().attachment.findUnique({ where: { id }, include: { ticket: true } });
-  if (!attachment || attachment.ticket.requesterId !== req.requesterId || attachment.removedAt) {
+  if (!attachment || attachment.ticket.requesterId !== req.user!.id || attachment.removedAt) {
     res.status(404).json({ error: { message: "Attachment not found" } });
     return;
   }

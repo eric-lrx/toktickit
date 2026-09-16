@@ -73,15 +73,16 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 | AUTHZ-07 | Security | AC-16 | Requester calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-08 | Security | BR-14 | Any protected route with no session at all | 401, not 403 | server/tests/lab-03/authorization.api.test.ts | Pass |
 | AUTHZ-09 | Security | BR-14 | Any protected route with a tampered/invalid JWT | 401 | server/tests/lab-03/authorization.api.test.ts | Pass |
-| AUTHZ-10 | Security | AC-03, BR-03 | Authenticated Requester supplies a different requesterId in the body/query | Backend ignores it, uses session identity only | server/tests/lab-03/authorization.api.test.ts | Pending |
+| AUTHZ-10 | Security | AC-03, BR-03 | Authenticated Requester supplies a different requesterId in the body/query | Backend ignores it, uses session identity only | server/tests/lab-03/authorization.api.test.ts | Pass |
 | AUTHZ-11 | Security | FR-06 | Administrator calls a Ticket-workflow write route (owner/priority/status) | 403 (read-only per §11 decision) | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-12 | Security | FR-22 | Administrator calls GET staff ticket detail (read) | 200, allowed | server/tests/lab-03/authorization.api.test.ts | Pending |
 
 AUTHZ-08/09 test the `requireRole` middleware itself, mounted on a throwaway
-route (Issue 33) — no staff/admin/notes route exists yet to hang the rest of
-this table on. AUTHZ-01/02 need Issue 37 (notes), 03/05/10 need Issue 34 (the
-real Requester routes) or 35/36 (the queue/detail routes they call), 06/07
-need Issue 38 (admin routes), 11/12 need Issue 36 (staff ticket detail).
+route (Issue 33) — no staff/admin/notes route existed yet to hang them on.
+AUTHZ-10 landed with Issue 34's real Requester routes. AUTHZ-01/02 need
+Issue 37 (notes), 03/05 need Issues 35/36 (the queue/detail routes they
+call), 06/07 need Issue 38 (admin routes), 11/12 need Issue 36 (staff ticket
+detail).
 
 ### API — Requester regression (migrated Lab 2 routes)
 
@@ -91,9 +92,9 @@ need Issue 38 (admin routes), 11/12 need Issue 36 (staff ticket detail).
 | MIG-02 | Migration/Regression | BR-33 | Every pre-existing RequesterUser row exists as a User post-migration with the same id | Row counts and ids match before/after | server/tests/lab-03/migration-regression.api.test.ts | Pass |
 | MIG-03 | Migration/Regression | BR-34 | Every migrated User has role=REQUESTER, mustChangePassword=true, a valid bcrypt hash | All three true for every migrated row | server/tests/lab-03/migration-regression.api.test.ts | Pass |
 | MIG-04 | Migration/Regression | BR-35 | Every pre-existing Ticket has itPriority = its requestedPriority after migration | Equal for every row | server/tests/lab-03/migration-regression.api.test.ts | Pending |
-| MIG-05 | Migration/Regression | BR-36 | X-Dev-Requester-Id header sent to any Lab 2 route post-migration | Ignored entirely; identity comes from the session only | server/tests/lab-03/migration-regression.api.test.ts | Pending |
-| MIG-06 | Regression | FR-08 | Full Lab 2 create/list/detail/attachment flow, authenticated | Identical behavior to Lab 2, now under a real session | server/tests/lab-03/create-ticket.api.test.ts (existing, migrated) | Pending |
-| MIG-07 | Regression | — | Full Lab 1 + Lab 2 suites | All still pass unmodified in behavior | server/tests/lab-01/*, server/tests/lab-02/* | Pending |
+| MIG-05 | Migration/Regression | BR-36 | X-Dev-Requester-Id header sent to any Lab 2 route post-migration | Ignored entirely; identity comes from the session only | server/tests/lab-03/migration-regression.api.test.ts | Pass |
+| MIG-06 | Regression | FR-08 | Full Lab 2 create/list/detail/attachment flow, authenticated | Identical behavior to Lab 2, now under a real session | server/tests/lab-03/create-ticket.api.test.ts (existing, migrated) | Pass |
+| MIG-07 | Regression | — | Full Lab 1 + Lab 2 suites | All still pass unmodified in behavior | server/tests/lab-01/*, server/tests/lab-02/* | Pass |
 | MIG-08 | Regression | — | An active IT Staff or Administrator id passed as X-Dev-Requester-Id (discovered during Issue 32, not pre-planned) | 400 — legacy header stays scoped to role=REQUESTER | server/tests/lab-03/migration-regression.api.test.ts | Pass |
 
 MIG-04 is deferred: `Ticket.itPriority` does not exist until Issue 36 adds it
@@ -304,3 +305,50 @@ Requester selector breaks `e2e/lab-02/helpers.ts`'s `selectRequester()` (it
 looks for the now-deleted selector's label). Deliberately deferred to Issue
 34, whose own scope is exactly this test-infrastructure migration — the
 gap's lifetime is one Issue, not the rest of the sprint.
+
+### Issue 34 — Requester regression on authenticated identity
+
+`cd server && npm test`: **73/73 passed** (12 files) — 1 new AUTHZ-10 test
+plus everything from Issue 33 (72/72). `cd client && npm test`: **40/40
+passed** (11 files) — one obsolete Lab 2 test removed (the in-app "switching
+Requester mid-session" case no longer exists once switching means logging
+out and back in as someone else — see below), no other losses. Both
+`npx tsc --noEmit` clean.
+
+`X-Dev-Requester-Id` is removed from `src/app.ts` entirely; every Requester
+route now uses `requireAuth` + `requireRole("REQUESTER")`, with ownership
+always read from `req.user.id`. `src/requesterAuth.ts` is deleted (nothing
+imports it anymore). All four Lab 2 server test files (`create-ticket`,
+`my-tickets`, `ticket-detail`, `attachments`) were migrated to a shared
+`server/tests/lab-03/testAuth.ts` login helper — deliberately not a
+"guess which password this shared seed account currently has" approach;
+it sets a known password directly via Prisma before logging in, since its
+job is producing a working session, not exercising the login flow itself.
+
+**A real bug found only by running the full Playwright suite, not caught by
+any unit/API test:** the client (`api.ts`) still sent `X-Dev-Requester-Id`
+and never set `credentials: "include"` on any Ticket/Attachment call. Server
+tests all passed (they call the Express app directly and can set whatever
+headers they like), but in the actual browser this meant every Requester
+screen was broken — My Tickets, Create Ticket, and Ticket Detail all failed
+with "Unable to load tickets"/generic errors, because the session cookie
+was never sent and the header was silently ignored. `e2e/lab-02/*.spec.ts`
+caught this immediately (5 of 7 failing) the first time it was run against
+the new backend. Fixed by removing the `requesterId` parameter and the
+`X-Dev-Requester-Id` header from every function in `api.ts`, adding
+`credentials: "include"` throughout, and removing the now-unnecessary
+`requesterId` prop from `CreateTicket`, `MyTickets`, and
+`RequesterTicketDetail` (it only ever existed to feed that header). Confirmed
+fixed by re-running the full `e2e/lab-02/` suite: 7/7 passing.
+
+`e2e/lab-02/helpers.ts`'s `selectRequester()` (the gap flagged at the end of
+Issue 33) is rewritten to log in for real via `page.request` (which shares
+its cookie jar with `page`, so the session is already present on the next
+`page.goto`), completing the mandatory change-password step when needed.
+`e2e/lab-02/requester-ticket-flow.spec.ts`'s "switching Requester" test is
+rewritten to Logout then Login as someone else — the real equivalent of what
+it used to do via the now-deleted in-app switcher.
+
+Manual browser verification: logged in as Ada Lovelace, confirmed My
+Tickets renders real ticket data (ticket numbers, dates, status/priority
+badges) — the exact screen the E2E suite had caught broken minutes earlier.

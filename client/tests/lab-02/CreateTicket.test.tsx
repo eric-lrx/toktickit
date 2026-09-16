@@ -21,7 +21,7 @@ async function fillValidForm() {
 function renderCreateTicket() {
   render(
     <MemoryRouter>
-      <CreateTicket requesterId={1} />
+      <CreateTicket />
     </MemoryRouter>
   );
 }
