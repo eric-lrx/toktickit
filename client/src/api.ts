@@ -1,5 +1,84 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
+export type Role = "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  mustChangePassword: boolean;
+}
+
+// Issue 32/33 — every auth call carries the httpOnly session cookie
+// cross-port (Vite 5173 -> API 3000); the server's CORS config only accepts
+// this because it names an explicit origin (never "*") with credentials:true.
+async function readAuthError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.error?.message === "string") return body.error.message;
+  } catch {
+    // fall through to the generic fallback
+  }
+  return fallback;
+}
+
+export async function login(email: string, password: string): Promise<AuthUser> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    throw new Error(await readAuthError(res, "Unable to sign in. Please try again."));
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    // Best-effort: the caller always clears local state regardless.
+  }
+}
+
+export async function getCurrentUser(): Promise<AuthUser> {
+  const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
+  if (!res.ok) {
+    throw new Error("Not authenticated");
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/auth/change-password`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    throw new Error(await readAuthError(res, "Unable to change password. Please try again."));
+  }
+}
+
 export interface Category {
   id: number;
   name: string;

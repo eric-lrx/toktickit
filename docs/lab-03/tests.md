@@ -71,11 +71,17 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 | AUTHZ-05 | Security | AC-10 | Requester calls PATCH status directly with any target status | 403 regardless of target | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-06 | Security | AC-16 | IT Staff calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-07 | Security | AC-16 | Requester calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
-| AUTHZ-08 | Security | BR-14 | Any protected route with no session at all | 401, not 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
-| AUTHZ-09 | Security | BR-14 | Any protected route with a tampered/invalid JWT | 401 | server/tests/lab-03/authorization.api.test.ts | Pending |
+| AUTHZ-08 | Security | BR-14 | Any protected route with no session at all | 401, not 403 | server/tests/lab-03/authorization.api.test.ts | Pass |
+| AUTHZ-09 | Security | BR-14 | Any protected route with a tampered/invalid JWT | 401 | server/tests/lab-03/authorization.api.test.ts | Pass |
 | AUTHZ-10 | Security | AC-03, BR-03 | Authenticated Requester supplies a different requesterId in the body/query | Backend ignores it, uses session identity only | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-11 | Security | FR-06 | Administrator calls a Ticket-workflow write route (owner/priority/status) | 403 (read-only per §11 decision) | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-12 | Security | FR-22 | Administrator calls GET staff ticket detail (read) | 200, allowed | server/tests/lab-03/authorization.api.test.ts | Pending |
+
+AUTHZ-08/09 test the `requireRole` middleware itself, mounted on a throwaway
+route (Issue 33) — no staff/admin/notes route exists yet to hang the rest of
+this table on. AUTHZ-01/02 need Issue 37 (notes), 03/05/10 need Issue 34 (the
+real Requester routes) or 35/36 (the queue/detail routes they call), 06/07
+need Issue 38 (admin routes), 11/12 need Issue 36 (staff ticket detail).
 
 ### API — Requester regression (migrated Lab 2 routes)
 
@@ -172,16 +178,16 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| UI-01 | UI | FR-01 | Login form, empty submit | Field-level errors, no API call | client/tests/lab-03/Login.test.tsx | Pending |
-| UI-02 | UI | AC-05 | Login, mocked 401 | Generic error message shown | client/tests/lab-03/Login.test.tsx | Pending |
-| UI-03 | UI | FR-01 | Login, busy state | Button shows spinner label, disabled | client/tests/lab-03/Login.test.tsx | Pending |
-| UI-04 | UI | FR-01 | Show/hide password toggle | Input type switches; icon has aria-label | client/tests/lab-03/Login.test.tsx | Pending |
-| UI-05 | UI | AC-02 | Successful login with mustChangePassword=true | Redirects to Change Password, not the app | client/tests/lab-03/Login.test.tsx | Pending |
-| UI-06 | UI | BR-11 | Change Password, weak new password | Field error, checklist shows unmet rules | client/tests/lab-03/ChangePassword.test.tsx | Pending |
-| UI-07 | UI | BR-12 | Change Password, confirm mismatch | Field error, no API call | client/tests/lab-03/ChangePassword.test.tsx | Pending |
-| UI-08 | UI | AC-02 | Change Password success (mandatory flow) | Proceeds into the application | client/tests/lab-03/ChangePassword.test.tsx | Pending |
-| UI-09 | UI | FR-07 | Shell renders correct nav per role (3 cases: Requester/IT Staff/Administrator) | Only permitted links rendered | client/tests/lab-03/AppShell.test.tsx | Pending |
-| UI-10 | UI | FR-03 | Logout button | Calls logout, redirects to Login | client/tests/lab-03/AppShell.test.tsx | Pending |
+| UI-01 | UI | FR-01 | Login form, empty submit | Field-level errors, no API call | client/tests/lab-03/Login.test.tsx | Pass |
+| UI-02 | UI | AC-05 | Login, mocked 401 | Generic error message shown | client/tests/lab-03/Login.test.tsx | Pass |
+| UI-03 | UI | FR-01 | Login, busy state | Button shows spinner label, disabled | client/tests/lab-03/Login.test.tsx | Pass |
+| UI-04 | UI | FR-01 | Show/hide password toggle | Input type switches; icon has aria-label | client/tests/lab-03/Login.test.tsx | Pass |
+| UI-05 | UI | AC-02 | Successful login with mustChangePassword=true | Redirects to Change Password, not the app | client/tests/lab-03/Login.test.tsx | Pass |
+| UI-06 | UI | BR-11 | Change Password, weak new password | Field error, checklist shows unmet rules | client/tests/lab-03/ChangePassword.test.tsx | Pass |
+| UI-07 | UI | BR-12 | Change Password, confirm mismatch | Field error, no API call | client/tests/lab-03/ChangePassword.test.tsx | Pass |
+| UI-08 | UI | AC-02 | Change Password success (mandatory flow) | Proceeds into the application | client/tests/lab-03/ChangePassword.test.tsx | Pass |
+| UI-09 | UI | FR-07 | Shell renders correct nav per role (3 cases: Requester/IT Staff/Administrator) | Only permitted links rendered | client/tests/lab-03/AppShell.test.tsx | Pass |
+| UI-10 | UI | FR-03 | Logout button | Calls logout, redirects to Login | client/tests/lab-03/AppShell.test.tsx | Pass |
 | UI-11 | UI | FR-11 | Queue renders rows with all badges | Ticket Number, Status, Requested + IT Priority, Owner all visible | client/tests/lab-03/StaffTicketQueue.test.tsx | Pending |
 | UI-12 | UI | FR-11 | Queue empty state vs no-results state | Correct message for each, distinguishable | client/tests/lab-03/StaffTicketQueue.test.tsx | Pending |
 | UI-13 | UI | FR-11 | Queue forbidden state (mocked 403) | Redirect/forbidden message, not a raw error | client/tests/lab-03/StaffTicketQueue.test.tsx | Pending |
@@ -263,3 +269,38 @@ in `requester-context.api.test.ts`):
 
 Both are fixed by scoping the relevant queries to `role: "REQUESTER"`
 (`src/requesterAuth.ts`, `src/app.ts`).
+
+### Issue 33 — Role-based authorization and app shell
+
+`cd server && npm test`: **72/72 passed** (12 files) — 5 new AUTHZ tests in
+the new `authorization.api.test.ts` (`requireRole` proven in isolation, no
+staff/admin route exists yet to hang it on) plus everything from Issue 32
+(67/67, 11 files). `cd client && npm test`: **41/41 passed** (11 files) —
+Login (6), ChangePassword (5), the new lab-03 AppShell.test.tsx (4, role-nav
++ logout), the lab-02 AppShell/AppRoot tests updated in place for the new
+`{user}` Shell prop and the Login gate. Both `npx tsc --noEmit` clean.
+
+Manual verification in the real browser (not just RTL): logged in as one
+account per role (Alan Turing/Requester, Margaret Hamilton/IT Staff, Barbara
+Liskov/Administrator), each landing on the mandatory Change Password screen
+with the live rule checklist updating correctly, then into the shell with
+exactly its own role's nav link ("My Tickets"/"Create Ticket" only for
+Requester, "My Queue" only for IT Staff, "Users" only for Administrator) and
+correct "Name — Role" display. Logout redirects to Login; a direct URL
+navigation to `/tickets` after logout redirects back to `/login` (`AC-07` /
+Part 5's "direct access blocked after logout"), proving the guard is a real
+route-level check, not just a hidden link. The voluntary Change Password
+entry point (from the shell) showed "Change Password"/"Save"/Cancel copy
+correctly distinct from the mandatory flow's "You must change your
+password..."/"Continue".
+
+The Authorization Matrix FR-06 refers to was written up for the first time
+in this Issue (`specification.md`, new subsection under §4) — it existed
+only as scattered FR/BR statements before, never as the single table the
+handout and grading rubric expect.
+
+Known, tracked gap (not silently dropped): removing the Development
+Requester selector breaks `e2e/lab-02/helpers.ts`'s `selectRequester()` (it
+looks for the now-deleted selector's label). Deliberately deferred to Issue
+34, whose own scope is exactly this test-infrastructure migration — the
+gap's lifetime is one Issue, not the rest of the sprint.
