@@ -129,6 +129,18 @@ export interface Attachment {
   removalReason: string | null;
 }
 
+// Issue 35 — grown from Lab 2's NEW-only literal to the full transition
+// vocabulary (BRIEFING_AGENT_LAB03.md).
+export type TicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
+
 export interface Ticket {
   id: number;
   ticketNumber: string;
@@ -138,7 +150,7 @@ export interface Ticket {
   summary: string;
   description: string;
   requestedPriority: RequestedPriority;
-  status: "NEW";
+  status: TicketStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -370,4 +382,71 @@ export async function checkSystem(): Promise<SystemStatus> {
   const categories: Category[] = await categoriesRes.json();
 
   return { online: true, categories };
+}
+
+// Issue 35 — IT Staff Ticket Queue: shared across every Requester, so no
+// requesterId scoping the way MyTickets has (api-spec.md).
+export interface StaffTicket extends Ticket {
+  itPriority: RequestedPriority;
+  ticketOwnerId: number | null;
+  ticketOwnerName: string | null;
+  categoryName: string;
+}
+
+export interface StaffUser {
+  id: number;
+  name: string;
+}
+
+export async function getStaffUsers(): Promise<StaffUser[]> {
+  const res = await fetch(`${API_URL}/api/staff/users`, { credentials: "include" });
+  if (!res.ok) throw new Error("Unable to load staff users.");
+  const json = await res.json();
+  return json.data;
+}
+
+export interface StaffQueueQuery {
+  search?: string;
+  status?: TicketStatus;
+  itPriority?: RequestedPriority;
+  ownerId?: number | "unassigned";
+  categoryId?: number;
+  sort?: "createdAt" | "updatedAt" | "itPriority" | "ticketNumber";
+  order?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface StaffQueueResult {
+  data: StaffTicket[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+}
+
+export async function getStaffQueue(query: StaffQueueQuery): Promise<StaffQueueResult> {
+  const params = new URLSearchParams();
+  if (query.search) params.set("search", query.search);
+  if (query.status) params.set("status", query.status);
+  if (query.itPriority) params.set("itPriority", query.itPriority);
+  if (query.ownerId !== undefined) params.set("ownerId", String(query.ownerId));
+  if (query.categoryId !== undefined) params.set("categoryId", String(query.categoryId));
+  if (query.sort) params.set("sort", query.sort);
+  if (query.order) params.set("order", query.order);
+  params.set("page", String(query.page ?? 1));
+  params.set("pageSize", String(query.pageSize ?? 10));
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/staff/tickets?${params.toString()}`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (res.status === 403) {
+    throw new Error("You do not have access to the ticket queue.");
+  }
+  if (!res.ok) {
+    console.error(`getStaffQueue failed with status ${res.status}`);
+    throw new Error("Unable to load the ticket queue. Please try again.");
+  }
+  return res.json();
 }

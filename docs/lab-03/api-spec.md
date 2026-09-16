@@ -110,8 +110,18 @@ Shared queue — every Ticket, not just the caller's own.
 
 Secondary sort always `id desc`.
 
-- `200` → `{ "data": [ { ...ticket, "itPriority": "MEDIUM", "ticketOwnerId": 3, "ticketOwnerName": "...", "status": "OPEN" } ], "meta": { "page": 1, "pageSize": 10, "total": 87, "totalPages": 9 } }`
+- `200` → `{ "data": [ { ...ticket, "itPriority": "MEDIUM", "ticketOwnerId": 3, "ticketOwnerName": "...", "categoryName": "...", "status": "OPEN" } ], "meta": { "page": 1, "pageSize": 10, "total": 87, "totalPages": 9 } }`
 - `400` — invalid parameter value, naming the offending parameter
+- `403` — caller is a Requester
+
+### GET /api/staff/users
+Not in the original contract — added while building the queue's Owner filter
+(ui-spec.md §4 specifies a named dropdown with an explicit "Unassigned" option, not
+a raw id input), and reused by Issue 36's claim/reassign control. IT Staff needs
+this list too, not just Administrator, so it can't be Issue 38's admin-only user
+list.
+
+- `200` → `{ "data": [ { "id": 3, "name": "..." } ] }` — every active `IT_STAFF`/`ADMINISTRATOR` user, name-sorted
 - `403` — caller is a Requester
 
 ### GET /api/staff/tickets/:id

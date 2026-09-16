@@ -66,7 +66,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 |---|---|---|---|---|---|---|
 | AUTHZ-01 | Security | AC-04 | Requester calls GET internal notes directly | 403, no note content in body | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-02 | Security | AC-04 | Requester calls POST internal notes directly | 403, note not created | server/tests/lab-03/authorization.api.test.ts | Pending |
-| AUTHZ-03 | Security | AC-16 | Requester calls GET /api/staff/tickets | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
+| AUTHZ-03 | Security | AC-16 | Requester calls GET /api/staff/tickets | 403 | server/tests/lab-03/staff-queue.api.test.ts | Pass |
 | AUTHZ-04 | Security | FR-13 | Requester calls PATCH owner/priority/status directly | 403 on all three | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-05 | Security | AC-10 | Requester calls PATCH status directly with any target status | 403 regardless of target | server/tests/lab-03/authorization.api.test.ts | Pending |
 | AUTHZ-06 | Security | AC-16 | IT Staff calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
@@ -79,10 +79,14 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 
 AUTHZ-08/09 test the `requireRole` middleware itself, mounted on a throwaway
 route (Issue 33) — no staff/admin/notes route existed yet to hang them on.
-AUTHZ-10 landed with Issue 34's real Requester routes. AUTHZ-01/02 need
-Issue 37 (notes), 03/05 need Issues 35/36 (the queue/detail routes they
-call), 06/07 need Issue 38 (admin routes), 11/12 need Issue 36 (staff ticket
-detail).
+AUTHZ-10 landed with Issue 34's real Requester routes. AUTHZ-03 (Issue 35)
+is a refinement of the original plan: it lives in `staff-queue.api.test.ts`
+alongside the endpoint it guards, rather than duplicated here too — this
+file stays the home for the cross-cutting/subtle cases (no session, a
+tampered JWT, identity spoofing) that don't belong to any one feature's own
+file. AUTHZ-01/02 need Issue 37 (notes), 05 needs Issue 36 (the detail
+route it calls), 06/07 need Issue 38 (admin routes), 11/12 need Issue 36
+(staff ticket detail).
 
 ### API — Requester regression (migrated Lab 2 routes)
 
@@ -106,20 +110,20 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| STAFF-Q-01 | API | FR-11 | GET queue, no filters | 200, all Tickets from every Requester (shared, not scoped) | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-02 | API | FR-11 | search matches ticketNumber | Correct subset returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-03 | API | FR-11 | search matches summary | Correct subset returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-04 | API | FR-11 | status filter | Only matching-status Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-05 | API | FR-11 | itPriority filter | Only matching Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-06 | API | FR-11 | ownerId=unassigned | Only Tickets with ticketOwnerId=null returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-07 | API | FR-11 | ownerId=<id> | Only that owner's Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-08 | API | FR-11 | categoryId filter | Only matching Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-09 | API | FR-11 | Combined filters | Only Tickets matching all of them returned | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-10 | API | FR-11 | sort=itPriority&order=desc | Ordered High→Low, id desc secondary | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-11 | API | FR-11 | Default sort/order | updatedAt desc | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-12 | API | AC-18 | Invalid sort value | 400 naming the parameter | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-13 | API | AC-18 | Invalid status value in filter | 400 naming the parameter | server/tests/lab-03/staff-queue.api.test.ts | Pending |
-| STAFF-Q-14 | API | FR-11 | page/pageSize | Correct page returned, meta.totalPages correct | server/tests/lab-03/staff-queue.api.test.ts | Pending |
+| STAFF-Q-01 | API | FR-11 | GET queue, no filters | 200, all Tickets from every Requester (shared, not scoped) | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-02 | API | FR-11 | search matches ticketNumber | Correct subset returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-03 | API | FR-11 | search matches summary | Correct subset returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-04 | API | FR-11 | status filter | Only matching-status Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-05 | API | FR-11 | itPriority filter | Only matching Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-06 | API | FR-11 | ownerId=unassigned | Only Tickets with ticketOwnerId=null returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-07 | API | FR-11 | ownerId=<id> | Only that owner's Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-08 | API | FR-11 | categoryId filter | Only matching Tickets returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-09 | API | FR-11 | Combined filters | Only Tickets matching all of them returned | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-10 | API | FR-11 | sort=itPriority&order=desc | Ordered High→Low, id desc secondary | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-11 | API | FR-11 | Default sort/order | updatedAt desc | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-12 | API | AC-18 | Invalid sort value | 400 naming the parameter | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-13 | API | AC-18 | Invalid status value in filter | 400 naming the parameter | server/tests/lab-03/staff-queue.api.test.ts | Pass |
+| STAFF-Q-14 | API | FR-11 | page/pageSize | Correct page returned, meta.totalPages correct | server/tests/lab-03/staff-queue.api.test.ts | Pass |
 
 ### API — IT Staff Ticket Detail and workflow (`staff-ticket-detail.api.test.ts`)
 
@@ -189,9 +193,9 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 | UI-08 | UI | AC-02 | Change Password success (mandatory flow) | Proceeds into the application | client/tests/lab-03/ChangePassword.test.tsx | Pass |
 | UI-09 | UI | FR-07 | Shell renders correct nav per role (3 cases: Requester/IT Staff/Administrator) | Only permitted links rendered | client/tests/lab-03/AppShell.test.tsx | Pass |
 | UI-10 | UI | FR-03 | Logout button | Calls logout, redirects to Login | client/tests/lab-03/AppShell.test.tsx | Pass |
-| UI-11 | UI | FR-11 | Queue renders rows with all badges | Ticket Number, Status, Requested + IT Priority, Owner all visible | client/tests/lab-03/StaffTicketQueue.test.tsx | Pending |
-| UI-12 | UI | FR-11 | Queue empty state vs no-results state | Correct message for each, distinguishable | client/tests/lab-03/StaffTicketQueue.test.tsx | Pending |
-| UI-13 | UI | FR-11 | Queue forbidden state (mocked 403) | Redirect/forbidden message, not a raw error | client/tests/lab-03/StaffTicketQueue.test.tsx | Pending |
+| UI-11 | UI | FR-11 | Queue renders rows with all badges | Ticket Number, Status, Requested + IT Priority, Owner all visible | client/tests/lab-03/StaffTicketQueue.test.tsx | Pass |
+| UI-12 | UI | FR-11 | Queue empty state vs no-results state | Correct message for each, distinguishable | client/tests/lab-03/StaffTicketQueue.test.tsx | Pass |
+| UI-13 | UI | FR-11 | Queue forbidden state (mocked 403) | Redirect/forbidden message, not a raw error | client/tests/lab-03/StaffTicketQueue.test.tsx | Pass |
 | UI-14 | UI | FR-13 | Claim button, unassigned Ticket | Calls owner endpoint with the current user | client/tests/lab-03/StaffTicketDetail.test.tsx | Pending |
 | UI-15 | UI | FR-15 | Status dropdown only offers allowed transitions | Options match the mocked allowed-transitions list | client/tests/lab-03/StaffTicketDetail.test.tsx | Pending |
 | UI-16 | UI | BR-04 | Public Comments and Internal Notes render in visually distinct panels | Both present, distinguishable by test id/class | client/tests/lab-03/StaffTicketDetail.test.tsx | Pending |
@@ -352,3 +356,85 @@ it used to do via the now-deleted in-app switcher.
 Manual browser verification: logged in as Ada Lovelace, confirmed My
 Tickets renders real ticket data (ticket numbers, dates, status/priority
 badges) — the exact screen the E2E suite had caught broken minutes earlier.
+
+### Issue 35 — IT Staff Ticket Queue
+
+Migration (specification.md §7, steps 5-7, all done together in this Issue
+rather than split across 35-37 as first planned): `Ticket.itPriority`
+(backfilled from `requestedPriority` for all 642 pre-existing rows),
+`ticketOwnerId`/`resolutionSummary`/`requesterResolutionIndicatedAt`
+(nullable, no backfill needed), and `TicketStatus` grown from 1 to 8 values
+via `ALTER TYPE ... ADD VALUE`. A pg_dump backup was taken first
+(db-backups/, gitignored). Verified via `psql`: 642/642 rows backfilled
+correctly, all 8 enum values present, zero data loss.
+
+`prisma/seed.ts` now seeds 10 realistic Tickets (idempotent — ticket number
+year "9999" is both the upsert key and an unmistakable seed marker) spanning
+all 8 statuses, both matching and IT-Staff-adjusted priorities, and
+assigned/unassigned/administrator-owned tickets — fulfilling §5.3's
+"realistic Tickets distributed across statuses, priorities, and ownership"
+requirement that Issue 32 deferred until these columns existed.
+
+`GET /api/staff/tickets` implements the full query contract (search,
+status, itPriority, ownerId including `unassigned`, categoryId, sort,
+order, pagination), guarded by `requireRole("IT_STAFF", "ADMINISTRATOR")`.
+Also added `GET /api/staff/users` (not in the original api-spec.md
+contract) once building the queue's Owner filter made clear a named
+dropdown needs a real list of staff — documented in `api-spec.md` as a
+deliberate addition, the same way `/api/staff/tickets` needed the
+Authorization Matrix written up in Issue 33.
+
+`cd server && npm test`: **93/93 passed** (13 files) — 19 new
+`staff-queue.api.test.ts` tests (STAFF-Q-01..14, the role guard, and
+`/api/staff/users`) plus the real MIG-04 test (previously deferred, now
+implemented and passing) and everything from Issue 34. `cd client && npm
+test`: **46/46 passed** (12 files) — 6 new `StaffTicketQueue.test.tsx`
+tests (UI-11/12/13). Both `npx tsc --noEmit` clean.
+
+Two test-fragility bugs found and fixed while writing this Issue's tests,
+both the same underlying lesson as Issue 32's `mustChangePassword` fix —
+a migration-time or filter-time invariant is not a permanent one once real
+usage (or realistic seed data simulating it) legitimately changes the
+field:
+1. MIG-04 initially failed because the new seed Tickets deliberately give a
+   few Tickets an IT-adjusted `itPriority` different from
+   `requestedPriority` — correctly excluded from the check by ticket number
+   (`TKT-9999-*`), which are Tickets created *after* the migration, not
+   pre-existing ones it's meant to verify.
+2. STAFF-Q-05/06 (`itPriority=HIGH`, `ownerId=unassigned`) initially
+   asserted specific seed Tickets appeared within a `pageSize=50` window —
+   both filters are also matched by hundreds of ordinary Tickets from other
+   tests, which can drown the fixtures out of the first page once enough
+   accumulate. Fixed by combining each with `search=TKT-9999` to scope
+   precisely to the seed fixtures being asserted on.
+
+A third, separate bug: adding `staff-queue.api.test.ts` (which calls
+`loginAs()` on the shared Margaret Hamilton/Barbara Liskov accounts) changed
+which test file resets which shared account's password, and by coincidence
+this pushed `auth.api.test.ts`'s own `SEED_PASSWORD`-based logins (against
+whichever account `findFirstOrThrow` happened to return) into occasional
+failure depending on file execution order. Fixed by making
+`auth.api.test.ts` fully self-contained — it now creates its own dedicated
+fixture accounts via `createFreshRequester()` instead of reusing any shared
+seeded identity, immune to any other file's side effects regardless of
+order. Confirmed via 3 consecutive full-suite runs after the fix.
+
+One additional transient failure was observed in a full-suite run after
+that fix (not reproduced in 15 subsequent runs). `ps aux` found 7 zombie
+`tsx watch` dev-server processes accumulated from earlier manual-verification
+restarts across Issues 32-35 (the same class of issue as Lab 2's
+zombie-process cleanup) — a plausible source of resource contention during
+the bcrypt-heavy suite, though the original failure's exact error wasn't
+captured before it scrolled past. Cleaned with `pkill -9 -f "tsx watch
+src/index.ts"`; 5 further consecutive clean runs afterward. Flagged here
+rather than silently dismissed, per the standing "no unexplained flakiness"
+rule — the fix is real (one confirmed contributing factor removed) even
+though full certainty about the single occurrence isn't possible after the
+fact.
+
+Manual browser verification: logged in as Margaret Hamilton (IT Staff),
+confirmed the desktop table (all 9 columns, correct badges, real owner
+names, real category names) and the mobile card layout (no horizontal
+scroll, both priority badges + owner visible) against the real seeded data,
+searching `TKT-9999` to see all 8 statuses at once with their distinct
+badge tones and labels.

@@ -105,6 +105,16 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 // Issue 8 — Create Ticket.
 // ---------------------------------------------------------------------------
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
+const TICKET_STATUSES = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_FOR_REQUESTER",
+  "RESOLVED",
+  "CLOSED",
+  "REOPENED",
+  "CANCELLED",
+] as const;
 
 interface TicketInput {
   categoryId: number;
@@ -183,7 +193,14 @@ app.post(
         (ticketNumber) =>
           getPrisma().$transaction(async (tx) => {
             const created = await tx.ticket.create({
-              data: { ticketNumber, requesterId: req.user!.id, ...result.data },
+              data: {
+                ticketNumber,
+                requesterId: req.user!.id,
+                ...result.data,
+                // BR-35 — IT Priority initially copies Requested Priority;
+                // IT Staff can change it later (Issue 36).
+                itPriority: result.data.requestedPriority,
+              },
             });
             const attachments = await Promise.all(
               files.map((f) =>
@@ -541,6 +558,127 @@ app.post("/api/auth/change-password", requireAuth, async (req: AuthedRequest, re
     res.status(200).json({ data: { mustChangePassword: false } });
   } catch {
     res.status(500).json({ error: { message: "Unable to change password" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Issue 35 — IT Staff Ticket Queue.
+// ---------------------------------------------------------------------------
+const STAFF_SORT_FIELDS = ["createdAt", "updatedAt", "itPriority", "ticketNumber"] as const;
+const requireStaffRead = [requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR")];
+
+app.get("/api/staff/tickets", ...requireStaffRead, async (req: AuthedRequest, res: Response) => {
+  const sort = (req.query.sort as string) ?? "updatedAt";
+  const order = (req.query.order as string) ?? "desc";
+  const pageRaw = req.query.page !== undefined ? Number(req.query.page) : 1;
+  const pageSizeRaw = req.query.pageSize !== undefined ? Number(req.query.pageSize) : 10;
+
+  if (!STAFF_SORT_FIELDS.includes(sort as (typeof STAFF_SORT_FIELDS)[number])) {
+    res.status(400).json({ error: { message: `invalid sort: '${sort}'` } });
+    return;
+  }
+  if (!ORDERS.includes(order as (typeof ORDERS)[number])) {
+    res.status(400).json({ error: { message: `invalid order: '${order}'` } });
+    return;
+  }
+  if (!Number.isInteger(pageRaw) || pageRaw < 1) {
+    res.status(400).json({ error: { message: `invalid page: '${req.query.page}'` } });
+    return;
+  }
+  if (!PAGE_SIZES.includes(pageSizeRaw)) {
+    res.status(400).json({ error: { message: `invalid pageSize: '${req.query.pageSize}'` } });
+    return;
+  }
+
+  // Shared queue (FR-11) — every Ticket, not just the caller's own.
+  const where: Prisma.TicketWhereInput = {};
+
+  const search = req.query.search;
+  if (typeof search === "string" && search.trim()) {
+    const term = search.trim();
+    where.OR = [
+      { ticketNumber: { contains: term, mode: "insensitive" } },
+      { summary: { contains: term, mode: "insensitive" } },
+    ];
+  }
+
+  if (req.query.status !== undefined) {
+    if (!TICKET_STATUSES.includes(req.query.status as (typeof TICKET_STATUSES)[number])) {
+      res.status(400).json({ error: { message: `invalid status: '${req.query.status}'` } });
+      return;
+    }
+    where.status = req.query.status as (typeof TICKET_STATUSES)[number];
+  }
+
+  if (req.query.itPriority !== undefined) {
+    if (!PRIORITIES.includes(req.query.itPriority as string)) {
+      res.status(400).json({ error: { message: `invalid itPriority: '${req.query.itPriority}'` } });
+      return;
+    }
+    where.itPriority = req.query.itPriority as "LOW" | "MEDIUM" | "HIGH";
+  }
+
+  if (req.query.ownerId !== undefined) {
+    if (req.query.ownerId === "unassigned") {
+      where.ticketOwnerId = null;
+    } else {
+      const id = Number(req.query.ownerId);
+      if (!Number.isInteger(id)) {
+        res.status(400).json({ error: { message: `invalid ownerId: '${req.query.ownerId}'` } });
+        return;
+      }
+      where.ticketOwnerId = id;
+    }
+  }
+
+  if (req.query.categoryId !== undefined) {
+    const id = Number(req.query.categoryId);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: { message: `invalid categoryId: '${req.query.categoryId}'` } });
+      return;
+    }
+    where.categoryId = id;
+  }
+
+  try {
+    const [total, tickets] = await Promise.all([
+      getPrisma().ticket.count({ where }),
+      getPrisma().ticket.findMany({
+        where,
+        include: { ticketOwner: { select: { name: true } }, category: { select: { name: true } } },
+        orderBy: [{ [sort]: order } as Prisma.TicketOrderByWithRelationInput, { id: "desc" }],
+        skip: (pageRaw - 1) * pageSizeRaw,
+        take: pageSizeRaw,
+      }),
+    ]);
+    const data = tickets.map(({ ticketOwner, category, ...ticket }) => ({
+      ...ticket,
+      ticketOwnerName: ticketOwner?.name ?? null,
+      categoryName: category.name,
+    }));
+    res.status(200).json({
+      data,
+      meta: { page: pageRaw, pageSize: pageSizeRaw, total, totalPages: Math.ceil(total / pageSizeRaw) },
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load the ticket queue" } });
+  }
+});
+
+// Not in api-spec.md's original contract — added while building the queue's
+// Owner filter (ui-spec.md §4: a named dropdown, not a raw id input), and
+// reused by Issue 36's claim/reassign control. IT Staff needs this list too
+// (not just Administrator), so it can't be the Issue 38 admin users route.
+app.get("/api/staff/users", ...requireStaffRead, async (_req: Request, res: Response) => {
+  try {
+    const staffUsers = await getPrisma().user.findMany({
+      where: { isActive: true, role: { in: ["IT_STAFF", "ADMINISTRATOR"] } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+    res.status(200).json({ data: staffUsers });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load staff users" } });
   }
 });
 

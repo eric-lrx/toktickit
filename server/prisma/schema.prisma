@@ -38,6 +38,7 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   tickets            Ticket[]
+  ownedTickets       Ticket[] @relation("TicketOwner")
 }
 
 model RelatedSystem {
@@ -54,9 +55,18 @@ enum RequestedPriority {
   HIGH
 }
 
-// Lab 2 declares only NEW (see specification.md §11 — status workflow is Lab 3).
+// Lab 3, Issue 35 — grown from NEW alone to the full transition-table
+// vocabulary (BRIEFING_AGENT_LAB03.md). ALTER TYPE ... ADD VALUE, never a
+// recreation, so every existing NEW row is untouched.
 enum TicketStatus {
   NEW
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_REQUESTER
+  RESOLVED
+  CLOSED
+  REOPENED
+  CANCELLED
 }
 
 model Ticket {
@@ -76,8 +86,25 @@ model Ticket {
   updatedAt         DateTime          @updatedAt
   attachments       Attachment[]
 
+  // Lab 3, Issue 35 (specification.md §7 migration path, steps 5-7) — added
+  // together in one migration since they're all part of the same "grow the
+  // Ticket for the IT Staff workflow" step, even though only itPriority is
+  // consumed by this Issue's queue; Issues 36/37 consume the rest without
+  // any further schema churn.
+  //
+  // itPriority reuses the RequestedPriority enum rather than declaring a
+  // duplicate ITPriority type with the identical LOW|MEDIUM|HIGH values —
+  // one Requester-set value, one IT-Staff-set value, same vocabulary.
+  itPriority                    RequestedPriority
+  ticketOwnerId                 Int?
+  ticketOwner                   User?     @relation("TicketOwner", fields: [ticketOwnerId], references: [id])
+  resolutionSummary             String?
+  requesterResolutionIndicatedAt DateTime?
+
   @@index([requesterId])
   @@index([createdAt])
+  @@index([ticketOwnerId])
+  @@index([status])
 }
 
 // Issue 11 — Attachment lifecycle. storedName is a UUID + validated extension,
