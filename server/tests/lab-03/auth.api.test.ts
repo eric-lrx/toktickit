@@ -13,12 +13,31 @@ const SEED_PASSWORD = "ChangeMe123!"; // matches prisma/seed.ts SEED_INITIAL_PAS
 let activeRequesterEmail: string;
 let inactiveRequesterEmail: string;
 
+// Fresh, dedicated fixtures — not the shared named seed accounts (Ada,
+// Grace...). Several other test files' testAuth.ts login helper resets a
+// shared account's password to a different known value as a side effect;
+// depending on file execution order, this file's own SEED_PASSWORD-based
+// logins could otherwise start failing for a "seeded" account that some
+// earlier file already logged into and changed. Full self-containment
+// avoids that regardless of order.
+async function createFreshRequester(overrides: { isActive?: boolean } = {}) {
+  const email = `auth-fixture-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+  await getPrisma().user.create({
+    data: {
+      name: "Auth Fixture Requester",
+      email,
+      isActive: overrides.isActive ?? true,
+      role: "REQUESTER",
+      passwordHash: await hashPassword(SEED_PASSWORD),
+      mustChangePassword: true,
+    },
+  });
+  return email;
+}
+
 beforeAll(async () => {
-  const prisma = getPrisma();
-  const active = await prisma.user.findFirstOrThrow({ where: { isActive: true, role: "REQUESTER" } });
-  const inactive = await prisma.user.findFirstOrThrow({ where: { isActive: false, role: "REQUESTER" } });
-  activeRequesterEmail = active.email;
-  inactiveRequesterEmail = inactive.email;
+  activeRequesterEmail = await createFreshRequester();
+  inactiveRequesterEmail = await createFreshRequester({ isActive: false });
 });
 
 function extractCookie(res: SupertestResponse): string {
@@ -27,24 +46,6 @@ function extractCookie(res: SupertestResponse): string {
   const tokenCookie = cookies.find((c) => c.startsWith("token="));
   if (!tokenCookie) throw new Error("no token cookie set on response");
   return tokenCookie.split(";")[0];
-}
-
-// A fresh, isolated Requester per change-password test so mutating one
-// fixture's password never affects another test (mustChangePassword=true,
-// same seeded plaintext password as everyone else).
-async function createFreshRequester() {
-  const email = `auth-fixture-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
-  await getPrisma().user.create({
-    data: {
-      name: "Auth Fixture Requester",
-      email,
-      isActive: true,
-      role: "REQUESTER",
-      passwordHash: await hashPassword(SEED_PASSWORD),
-      mustChangePassword: true,
-    },
-  });
-  return email;
 }
 
 async function login(email: string, password = SEED_PASSWORD) {
