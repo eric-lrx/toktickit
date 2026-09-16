@@ -8,6 +8,7 @@ import MyTickets from "./MyTickets.js";
 import RequesterTicketDetail from "./RequesterTicketDetail.js";
 import StaffTicketQueue from "./StaffTicketQueue.js";
 import StaffTicketDetail from "./StaffTicketDetail.js";
+import UserManagement from "./UserManagement.js";
 import { Role } from "./api.js";
 
 const ROLE_HOME: Record<Role, string> = {
@@ -79,7 +80,7 @@ function AuthenticatedApp() {
             <Route path="/queue/:id" element={<StaffTicketDetail />} />
           </>
         )}
-        {/* Administrator Users (/admin/users) lands in Issue 38. */}
+        {user.role === "ADMINISTRATOR" && <Route path="/admin/users" element={<UserManagement />} />}
       </Routes>
     </Shell>
   );

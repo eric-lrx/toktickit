@@ -1053,6 +1053,229 @@ app.get("/api/tickets/:id/notes", ...requireStaffRead, async (req: AuthedRequest
   }
 });
 
+// ---------------------------------------------------------------------------
+// Issue 38 — Administrator user management.
+// ---------------------------------------------------------------------------
+const requireAdmin = [requireAuth, requireRole("ADMINISTRATOR")];
+const ROLES = ["REQUESTER", "IT_STAFF", "ADMINISTRATOR"] as const;
+
+function sanitizeUser(user: {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
+}) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isActive: user.isActive,
+    mustChangePassword: user.mustChangePassword,
+  };
+}
+
+// Control-flow errors thrown inside the PATCH transaction below (BR-30's
+// last-Administrator check has to run inside that same transaction, so it
+// can't just return a status code directly) — caught once, after the
+// transaction, and mapped to their HTTP status there.
+class NotFoundError extends Error {}
+class SelfDeactivationError extends Error {}
+class LastAdminError extends Error {}
+class DuplicateEmailError extends Error {}
+
+app.get("/api/admin/users", ...requireAdmin, async (req: Request, res: Response) => {
+  const where: Prisma.UserWhereInput = {};
+
+  const search = req.query.search;
+  if (typeof search === "string" && search.trim()) {
+    const term = search.trim();
+    where.OR = [{ name: { contains: term, mode: "insensitive" } }, { email: { contains: term, mode: "insensitive" } }];
+  }
+
+  if (req.query.role !== undefined) {
+    if (!ROLES.includes(req.query.role as (typeof ROLES)[number])) {
+      res.status(400).json({ error: { message: `invalid role: '${req.query.role}'` } });
+      return;
+    }
+    where.role = req.query.role as (typeof ROLES)[number];
+  }
+
+  try {
+    const users = await getPrisma().user.findMany({ where, orderBy: { id: "asc" } });
+    res.status(200).json({ data: users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, isActive: u.isActive })) });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load users" } });
+  }
+});
+
+app.post("/api/admin/users", ...requireAdmin, async (req: Request, res: Response) => {
+  const body = req.body ?? {};
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const role = body.role;
+  const isActive = body.isActive;
+  const initialPassword = typeof body.initialPassword === "string" ? body.initialPassword : "";
+
+  const errors: string[] = [];
+  if (!name) errors.push("name is required");
+  if (!email) errors.push("email is required");
+  if (!ROLES.includes(role)) errors.push("role must be REQUESTER, IT_STAFF, or ADMINISTRATOR");
+  if (typeof isActive !== "boolean") errors.push("isActive must be a boolean");
+  errors.push(...passwordRuleViolations(initialPassword));
+  if (errors.length > 0) {
+    res.status(400).json({ error: { message: errors.join("; ") } });
+    return;
+  }
+
+  try {
+    const passwordHash = await hashPassword(initialPassword);
+    const created = await getPrisma().user.create({
+      data: { name, email, role, isActive, passwordHash, mustChangePassword: true },
+    });
+    res.status(201).json({ data: sanitizeUser(created) });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      res.status(409).json({ error: { message: "email is already in use" } });
+      return;
+    }
+    res.status(500).json({ error: { message: "Unable to create user" } });
+  }
+});
+
+// BR-28/29/30 all have to be checked against the same consistent snapshot
+// the update itself commits against, so every check plus the update runs
+// inside one transaction. BR-30 additionally takes `FOR UPDATE` locks on
+// every currently-active-Administrator row before counting them: two
+// concurrent requests that would otherwise both read "2 active
+// Administrators" and both proceed now serialize on that shared lock, and
+// under Postgres's READ COMMITTED isolation the second request's locked
+// re-read reflects the first request's already-committed change (Postgres
+// re-evaluates a SELECT ... FOR UPDATE row's WHERE clause against the
+// latest committed version once its lock is granted) — so the count it
+// acts on is never stale.
+app.patch("/api/admin/users/:id", ...requireAdmin, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "User not found" } });
+    return;
+  }
+
+  const body = req.body ?? {};
+  const data: Prisma.UserUpdateInput = {};
+  if (body.name !== undefined) {
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name) {
+      res.status(400).json({ error: { message: "name must not be empty" } });
+      return;
+    }
+    data.name = name;
+  }
+  if (body.email !== undefined) {
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    if (!email) {
+      res.status(400).json({ error: { message: "email must not be empty" } });
+      return;
+    }
+    data.email = email;
+  }
+  if (body.role !== undefined) {
+    if (!ROLES.includes(body.role)) {
+      res.status(400).json({ error: { message: `invalid role: '${body.role}'` } });
+      return;
+    }
+    data.role = body.role;
+  }
+  if (body.isActive !== undefined) {
+    if (typeof body.isActive !== "boolean") {
+      res.status(400).json({ error: { message: "isActive must be a boolean" } });
+      return;
+    }
+    data.isActive = body.isActive;
+  }
+
+  try {
+    const updated = await getPrisma().$transaction(async (tx) => {
+      const existing = await tx.user.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError();
+
+      if (data.isActive === false && existing.id === req.user!.id) {
+        throw new SelfDeactivationError();
+      }
+
+      const wasActiveAdmin = existing.role === "ADMINISTRATOR" && existing.isActive;
+      const staysActiveAdmin =
+        (data.role !== undefined ? data.role === "ADMINISTRATOR" : existing.role === "ADMINISTRATOR") &&
+        (data.isActive !== undefined ? data.isActive === true : existing.isActive);
+      if (wasActiveAdmin && !staysActiveAdmin) {
+        const activeAdmins = await tx.$queryRaw<
+          { id: number }[]
+        >`SELECT id FROM "User" WHERE role = 'ADMINISTRATOR' AND "isActive" = true FOR UPDATE`;
+        if (activeAdmins.length <= 1) throw new LastAdminError();
+      }
+
+      if (data.email !== undefined) {
+        const emailOwner = await tx.user.findUnique({ where: { email: data.email as string } });
+        if (emailOwner && emailOwner.id !== id) throw new DuplicateEmailError();
+      }
+
+      return tx.user.update({ where: { id }, data });
+    });
+    res.status(200).json({ data: sanitizeUser(updated) });
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      res.status(404).json({ error: { message: "User not found" } });
+      return;
+    }
+    if (err instanceof SelfDeactivationError) {
+      res.status(409).json({ error: { message: "You cannot deactivate your own account." } });
+      return;
+    }
+    if (err instanceof LastAdminError) {
+      res.status(409).json({ error: { message: "At least one active Administrator must remain." } });
+      return;
+    }
+    if (err instanceof DuplicateEmailError) {
+      res.status(409).json({ error: { message: "email is already in use" } });
+      return;
+    }
+    res.status(500).json({ error: { message: "Unable to update user" } });
+  }
+});
+
+app.patch("/api/admin/users/:id/password", ...requireAdmin, async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "User not found" } });
+    return;
+  }
+  const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  const violations = passwordRuleViolations(newPassword);
+  if (violations.length > 0) {
+    res.status(400).json({ error: { message: violations.join("; ") } });
+    return;
+  }
+
+  const existing = await getPrisma().user.findUnique({ where: { id } });
+  if (!existing) {
+    res.status(404).json({ error: { message: "User not found" } });
+    return;
+  }
+
+  try {
+    const passwordHash = await hashPassword(newPassword);
+    const updated = await getPrisma().user.update({
+      where: { id },
+      data: { passwordHash, mustChangePassword: true },
+    });
+    res.status(200).json({ data: { mustChangePassword: updated.mustChangePassword } });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to set the new password" } });
+  }
+});
+
 // Multer's fileFilter/limits errors surface here (must stay last, 4 args).
 app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
   if (err instanceof UnsupportedFileTypeError) {

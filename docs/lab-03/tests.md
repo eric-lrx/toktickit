@@ -69,8 +69,8 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 | AUTHZ-03 | Security | AC-16 | Requester calls GET /api/staff/tickets | 403 | server/tests/lab-03/staff-queue.api.test.ts | Pass |
 | AUTHZ-04 | Security | FR-13 | Requester calls PATCH owner/priority/status directly | 403 on all three | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
 | AUTHZ-05 | Security | AC-10 | Requester calls PATCH status directly with any target status | 403 regardless of target | server/tests/lab-03/staff-ticket-detail.api.test.ts | Pass |
-| AUTHZ-06 | Security | AC-16 | IT Staff calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
-| AUTHZ-07 | Security | AC-16 | Requester calls any /api/admin/* route | 403 | server/tests/lab-03/authorization.api.test.ts | Pending |
+| AUTHZ-06 | Security | AC-16 | IT Staff calls any /api/admin/* route | 403 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| AUTHZ-07 | Security | AC-16 | Requester calls any /api/admin/* route | 403 | server/tests/lab-03/users-admin.api.test.ts | Pass |
 | AUTHZ-08 | Security | BR-14 | Any protected route with no session at all | 401, not 403 | server/tests/lab-03/authorization.api.test.ts | Pass |
 | AUTHZ-09 | Security | BR-14 | Any protected route with a tampered/invalid JWT | 401 | server/tests/lab-03/authorization.api.test.ts | Pass |
 | AUTHZ-10 | Security | AC-03, BR-03 | Authenticated Requester supplies a different requesterId in the body/query | Backend ignores it, uses session identity only | server/tests/lab-03/authorization.api.test.ts | Pass |
@@ -86,8 +86,8 @@ the endpoint it guards (`staff-queue.api.test.ts`,
 file stays the home for the cross-cutting/subtle cases (no session, a
 tampered JWT, identity spoofing) that don't belong to any one feature's own
 file. AUTHZ-01/02 (Issue 37) moved the same way, into
-`comments-notes.api.test.ts` alongside the notes routes they guard; 06/07
-still need Issue 38 (admin routes).
+`comments-notes.api.test.ts` alongside the notes routes they guard; AUTHZ-06/
+07 (Issue 38) into `users-admin.api.test.ts` alongside the admin routes.
 
 ### API — Requester regression (migrated Lab 2 routes)
 
@@ -162,23 +162,23 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| ADMIN-01 | API | FR-18 | List users, no filters | 200, all users | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-02 | API | FR-18 | search by partial name | Correct subset | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-03 | API | FR-18 | search by partial email | Correct subset | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-04 | API | FR-18 | role filter | Only that role returned | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-05 | API | FR-19, AC-01-style | Create user, valid data | 201, mustChangePassword=true | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-06 | API | AC-15, BR-28 | Create user with duplicate email | 409 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-07 | API | BR-17 | Create user with an invalid/multiple role value | 400 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-08 | API | FR-19 | Create user with weak initialPassword | 400 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-09 | API | FR-20 | Edit name/email/role/isActive | 200, fields updated | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-10 | API | BR-28 | Edit email to one already used by another user | 409 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-11 | API | AC-13, BR-29 | Administrator deactivates their own account | 409 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-12 | API | AC-14, BR-30 | Deactivate the last active Administrator | 409 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-13 | API | AC-14, BR-30 | Change the last active Administrator's role away from ADMINISTRATOR | 409 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-14 | API | BR-30 | Two concurrent requests both trying to deactivate the two remaining active Administrators | At most one succeeds; the system never ends with zero active Administrators | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-15 | API | FR-21, BR-32 | Set new initial password | 200, mustChangePassword=true; user can log in with the new password | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-16 | API | FR-21 | Set new initial password, weak value | 400 | server/tests/lab-03/users-admin.api.test.ts | Pending |
-| ADMIN-17 | API | BR-31 | Confirm no delete-user route exists | 404/405 on the attempt | server/tests/lab-03/users-admin.api.test.ts | Pending |
+| ADMIN-01 | API | FR-18 | List users, no filters | 200, all users | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-02 | API | FR-18 | search by partial name | Correct subset | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-03 | API | FR-18 | search by partial email | Correct subset | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-04 | API | FR-18 | role filter | Only that role returned | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-05 | API | FR-19, AC-01-style | Create user, valid data | 201, mustChangePassword=true | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-06 | API | AC-15, BR-28 | Create user with duplicate email | 409 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-07 | API | BR-17 | Create user with an invalid/multiple role value | 400 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-08 | API | FR-19 | Create user with weak initialPassword | 400 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-09 | API | FR-20 | Edit name/email/role/isActive | 200, fields updated | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-10 | API | BR-28 | Edit email to one already used by another user | 409 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-11 | API | AC-13, BR-29 | Administrator deactivates their own account | 409 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-12 | API | AC-14, BR-30 | Deactivate the last active Administrator | 409 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-13 | API | AC-14, BR-30 | Change the last active Administrator's role away from ADMINISTRATOR | 409 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-14 | API | BR-30 | Two concurrent requests both trying to deactivate the two remaining active Administrators | At most one succeeds; the system never ends with zero active Administrators | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-15 | API | FR-21, BR-32 | Set new initial password | 200, mustChangePassword=true; user can log in with the new password | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-16 | API | FR-21 | Set new initial password, weak value | 400 | server/tests/lab-03/users-admin.api.test.ts | Pass |
+| ADMIN-17 | API | BR-31 | Confirm no delete-user route exists | 404/405 on the attempt | server/tests/lab-03/users-admin.api.test.ts | Pass |
 
 ### UI Component
 
@@ -200,10 +200,10 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 | UI-14 | UI | FR-13 | Claim button, unassigned Ticket | Calls owner endpoint with the current user | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
 | UI-15 | UI | FR-15 | Status dropdown only offers allowed transitions | Options match the mocked allowed-transitions list | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
 | UI-16 | UI | BR-04 | Public Comments and Internal Notes render in visually distinct panels | Both present, distinguishable by test id/class | client/tests/lab-03/StaffTicketDetail.test.tsx | Pass |
-| UI-17 | UI | FR-18 | User list renders Name/Email/Role/Status/Edit | All columns present | client/tests/lab-03/UserManagement.test.tsx | Pending |
-| UI-18 | UI | FR-18 | Search + role filter | Filters the rendered list | client/tests/lab-03/UserManagement.test.tsx | Pending |
-| UI-19 | UI | AC-15 | Create user, mocked 409 duplicate email | Field-level error shown | client/tests/lab-03/UserManagement.test.tsx | Pending |
-| UI-20 | UI | BR-29 | Edit own account | Deactivate control disabled with an explanatory tooltip | client/tests/lab-03/UserManagement.test.tsx | Pending |
+| UI-17 | UI | FR-18 | User list renders Name/Email/Role/Status/Edit | All columns present | client/tests/lab-03/UserManagement.test.tsx | Pass |
+| UI-18 | UI | FR-18 | Search + role filter | Filters the rendered list | client/tests/lab-03/UserManagement.test.tsx | Pass |
+| UI-19 | UI | AC-15 | Create user, mocked 409 duplicate email | Field-level error shown | client/tests/lab-03/UserManagement.test.tsx | Pass |
+| UI-20 | UI | BR-29 | Edit own account | Deactivate control disabled with an explanatory tooltip | client/tests/lab-03/UserManagement.test.tsx | Pass |
 
 ### UI Style
 
@@ -555,3 +555,81 @@ nowhere in the page — and, checking past the DOM to the wire itself, the
 `internalNotes` key at all, confirming the absence is structural and not a
 client-side filter that a determined user could bypass by reading the
 network tab.
+
+### Issue 38 — Administrator user management
+
+Every route needed for this Issue was already fully specified in
+api-spec.md (`GET/POST/PATCH /api/admin/users`, `PATCH .../password`) from
+the sprint's spec-writing phase — no schema changes either, since `User`
+has carried every field this screen needs (`name`/`email`/`role`/
+`isActive`/`passwordHash`/`mustChangePassword`) since Issue 32. No
+migration for this Issue.
+
+BR-28/29/30 (duplicate email, self-deactivation, last-active-Administrator)
+all run inside one `$transaction` per `PATCH /api/admin/users/:id`, in that
+order, so every check sees the same consistent snapshot the update itself
+commits against. BR-30 is the interesting one: "the system must always
+retain at least one active Administrator" is a statement about the whole
+table, so two concurrent requests each independently reading "2 active
+Administrators, safe to deactivate one" and both proceeding would violate
+it even though neither request's own read was wrong at the time it read.
+The fix takes a `SELECT id FROM "User" WHERE role = 'ADMINISTRATOR' AND
+"isActive" = true FOR UPDATE` row lock inside the transaction before
+counting: a second concurrent transaction touching the same rows blocks on
+that lock, and Postgres's READ COMMITTED isolation re-evaluates the WHERE
+clause against the latest committed data once the lock is granted — so the
+second request's count reflects the first request's already-committed
+change instead of the stale value it would have read without the lock.
+ADMIN-14 exercises exactly this with two real concurrent requests.
+
+`cd server && npm test`: **165/165 passed** (17 files) — 25 new
+`users-admin.api.test.ts` tests covering ADMIN-01..17 plus AUTHZ-06/07
+(colocated with the admin routes they guard, the same refinement as every
+prior AUTHZ-0x). Every subject user in this file, including the "acting
+Administrator," is a throwaway fixture created directly via Prisma, never
+a shared seeded identity — this file mutates `isActive`/`role`/`email` on
+purpose, and Issue 35's `auth.api.test.ts` fragility already showed what
+happens when one file's mutation of a shared account leaks into another
+file's assumptions. The BR-30 tests go further: since "last active
+Administrator" is a statement about the *whole* table, honestly testing it
+means temporarily deactivating every other real active Administrator
+(the seeded Barbara Liskov included) for the duration of that one
+`describe` block, restored in `afterAll`. `cd client && npm test`:
+**57/57 passed** (14 files) — 6 new `UserManagement.test.tsx` tests
+(UI-17..20 plus two unplanned-but-direct cases: Deactivate NOT disabled
+for a different user, and the 403-forbidden state). Both `npx tsc --noEmit`
+clean.
+
+Two real, independent mistakes surfaced while writing ADMIN-02/03 and
+weren't caught until the second test run: the search-filter tests used a
+static marker string ("Zzyzx Uniquename"); re-running the same file against
+this sprint's shared, never-reset dev database (the same accumulation
+already seen with Tickets) meant a *second* run's fixture matched the *first* run's
+leftover row too, so the exact-list assertion started failing on the second
+run of a test that had nothing wrong with it the first time. Fixed by
+making the marker itself unique per run (a timestamp + random suffix baked
+into the searched substring), the same fix-shape as every other
+"assumed-unique-but-isn't" fragility this sprint has hit.
+
+Manual browser verification end-to-end, logged in as Barbara Liskov
+(Administrator): the list rendered Name/Email/Role/Status/Edit for every
+seeded and fixture user; created a new Requester with a valid initial
+password (real `201`, live password-rule checklist ticking green as the
+password was typed); edited that user's name/email (real `200`, list
+reflected the change immediately); used "Set new password" and confirmed
+the target could log in with the new password and got `mustChangePassword:
+true` back; opened Barbara's own row and confirmed "Deactivate User" was
+disabled with the title "You cannot deactivate your own account" (BR-29),
+while the same button on a different user's row was enabled. The
+last-active-Administrator race itself (ADMIN-12/13/14) wasn't re-exercised
+manually — repeated automated runs against this sprint's shared, never-reset
+dev database have left over twenty active Administrator fixtures behind, so
+"the last one" isn't a scenario the UI can reach here anymore, and the
+automated suite already isolates and proves it directly (re-run 4 times
+with no flakiness). One real, previously-unnoticed defect this pass did catch: the
+user table had no responsive wrapper, so on a narrow viewport the whole
+page — not just the table — scrolled horizontally (`document.body.
+scrollWidth` 834 against a 517 viewport), violating ui-spec.md §9's "no
+horizontal scroll on mobile for any new screen." Fixed by wrapping the
+table in a `table-responsive` container, confirmed the page's own
+`scrollWidth` matched its `clientWidth` afterward.
