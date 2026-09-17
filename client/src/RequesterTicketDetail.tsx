@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
 import AttachmentSection from "./components/AttachmentSection.js";
+import CommentPanel from "./components/CommentPanel.js";
 import {
   addAttachments,
   Attachment,
   downloadAttachment,
   getTicket,
   indicateResolution,
+  postComment,
   removeAttachment,
   TicketDetail,
 } from "./api.js";
@@ -23,8 +25,9 @@ function priorityTone(priority: TicketDetail["requestedPriority"]): "pale" | "wa
 
 // Issue 10 — Requester Ticket Detail: read-only Ticket info (ui-spec.md §4.5).
 // Issue 11 — Attachment lifecycle: add, download, soft-remove with reason.
-// No Public Comments, Internal Notes, Actions Taken, or status controls —
-// those are explicitly out of scope for Lab 2 (specification.md §3).
+// Issue 37 — Public Comments (own ticket only). Internal Notes never render
+// here at all — there is no route a Requester session can reach that returns
+// them (BR-16/ui-spec.md §5), so there is nothing to conditionally hide.
 export default function RequesterTicketDetail() {
   const { id } = useParams();
   const [state, setState] = useState<LoadState>("loading");
@@ -254,6 +257,19 @@ export default function RequesterTicketDetail() {
             </div>
           </div>
         )}
+      </div>
+
+      <hr />
+
+      <div className="mb-4">
+        <CommentPanel
+          variant="public"
+          entries={ticket.publicComments}
+          onPost={async (content) => {
+            await postComment(ticket.id, content);
+            await loadTicket();
+          }}
+        />
       </div>
     </div>
   );

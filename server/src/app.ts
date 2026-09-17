@@ -334,8 +334,30 @@ app.get("/api/tickets/:id", ...requireRequester, async (req: AuthedRequest, res:
       res.status(404).json({ error: { message: "Ticket not found" } });
       return;
     }
-    const attachments = await getPrisma().attachment.findMany({ where: { ticketId: id }, orderBy: { id: "asc" } });
-    res.status(200).json({ data: { ...ticket, attachments } });
+    const [attachments, comments] = await Promise.all([
+      getPrisma().attachment.findMany({ where: { ticketId: id }, orderBy: { id: "asc" } }),
+      getPrisma().publicComment.findMany({
+        where: { ticketId: id },
+        include: { author: { select: { name: true, role: true } } },
+        orderBy: { id: "asc" },
+      }),
+    ]);
+    // Internal Notes are never queried here at all — not filtered out, not
+    // present to begin with, so a Requester session structurally cannot
+    // receive one through this route (ui-spec.md §6).
+    res.status(200).json({
+      data: {
+        ...ticket,
+        attachments,
+        publicComments: comments.map((c) => ({
+          id: c.id,
+          authorName: c.author.name,
+          authorRole: c.author.role,
+          content: c.content,
+          createdAt: c.createdAt,
+        })),
+      },
+    });
   } catch {
     res.status(500).json({ error: { message: "Unable to load ticket" } });
   }
@@ -710,7 +732,19 @@ app.get("/api/staff/tickets/:id", ...requireStaffRead, async (req: AuthedRequest
       res.status(404).json({ error: { message: "Ticket not found" } });
       return;
     }
-    const attachments = await getPrisma().attachment.findMany({ where: { ticketId: id }, orderBy: { id: "asc" } });
+    const [attachments, comments, notes] = await Promise.all([
+      getPrisma().attachment.findMany({ where: { ticketId: id }, orderBy: { id: "asc" } }),
+      getPrisma().publicComment.findMany({
+        where: { ticketId: id },
+        include: { author: { select: { name: true, role: true } } },
+        orderBy: { id: "asc" },
+      }),
+      getPrisma().internalNote.findMany({
+        where: { ticketId: id },
+        include: { author: { select: { name: true } } },
+        orderBy: { id: "asc" },
+      }),
+    ]);
     const { ticketOwner, category, ...rest } = ticket;
     res.status(200).json({
       data: {
@@ -718,8 +752,14 @@ app.get("/api/staff/tickets/:id", ...requireStaffRead, async (req: AuthedRequest
         ticketOwnerName: ticketOwner?.name ?? null,
         categoryName: category.name,
         attachments,
-        publicComments: [],
-        internalNotes: [],
+        publicComments: comments.map((c) => ({
+          id: c.id,
+          authorName: c.author.name,
+          authorRole: c.author.role,
+          content: c.content,
+          createdAt: c.createdAt,
+        })),
+        internalNotes: notes.map((n) => ({ id: n.id, authorName: n.author.name, content: n.content, createdAt: n.createdAt })),
       },
     });
   } catch {
@@ -857,6 +897,159 @@ app.patch("/api/tickets/:id/resolution-indicated", ...requireRequester, async (r
     res.status(200).json({ data: { requesterResolutionIndicatedAt: updated.requesterResolutionIndicatedAt } });
   } catch {
     res.status(500).json({ error: { message: "Unable to record the resolution signal" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Issue 37 — Public Comments and Internal Notes. Two separate tables (not
+// one with an isInternal flag), so this section structurally cannot leak a
+// Note through the Comments routes — there's no column to leak from.
+// ---------------------------------------------------------------------------
+const MAX_COMMENT_LENGTH = 4000;
+
+function validateCommentContent(raw: unknown): { error: string } | { content: string } {
+  const content = typeof raw === "string" ? raw.trim() : "";
+  if (!content) return { error: "content is required" };
+  if (content.length > MAX_COMMENT_LENGTH) {
+    return { error: `content must be ${MAX_COMMENT_LENGTH} characters or fewer` };
+  }
+  return { content };
+}
+
+// Requester (own Ticket only) or IT Staff (any Ticket) — not Administrator,
+// read-only on the workflow (Authorization Matrix, specification.md §4).
+app.post("/api/tickets/:id/comments", requireAuth, async (req: AuthedRequest, res: Response) => {
+  if (req.user!.role === "ADMINISTRATOR") {
+    res.status(403).json({ error: { message: "Forbidden." } });
+    return;
+  }
+  const id = Number(req.params.id);
+  const ticket = Number.isInteger(id) ? await getPrisma().ticket.findUnique({ where: { id } }) : null;
+  if (!ticket || (req.user!.role === "REQUESTER" && ticket.requesterId !== req.user!.id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  const result = validateCommentContent(req.body?.content);
+  if ("error" in result) {
+    res.status(400).json({ error: { message: result.error } });
+    return;
+  }
+
+  try {
+    const comment = await getPrisma().publicComment.create({
+      data: { ticketId: id, authorId: req.user!.id, content: result.content },
+      include: { author: { select: { name: true } } },
+    });
+    res.status(201).json({
+      data: {
+        id: comment.id,
+        ticketId: comment.ticketId,
+        authorId: comment.authorId,
+        authorName: comment.author.name,
+        content: comment.content,
+        createdAt: comment.createdAt,
+      },
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to post comment" } });
+  }
+});
+
+// Every role that can view a Ticket at all can view its comments — the only
+// rejection is ownership (404, BR-16), never a role-based 403.
+app.get("/api/tickets/:id/comments", requireAuth, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  const ticket = Number.isInteger(id) ? await getPrisma().ticket.findUnique({ where: { id } }) : null;
+  if (!ticket || (req.user!.role === "REQUESTER" && ticket.requesterId !== req.user!.id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  try {
+    const comments = await getPrisma().publicComment.findMany({
+      where: { ticketId: id },
+      include: { author: { select: { name: true, role: true } } },
+      orderBy: { id: "asc" },
+    });
+    res.status(200).json({
+      data: comments.map((c) => ({
+        id: c.id,
+        authorName: c.author.name,
+        authorRole: c.author.role,
+        content: c.content,
+        createdAt: c.createdAt,
+      })),
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load comments" } });
+  }
+});
+
+// IT Staff only — AC-04/AUTHZ-02: a Requester's direct call is rejected by
+// requireStaffWrite before the handler ever runs, so no note content can
+// leak regardless of what the handler itself does.
+app.post("/api/tickets/:id/notes", ...requireStaffWrite, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  const ticket = await getPrisma().ticket.findUnique({ where: { id } });
+  if (!ticket) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  const result = validateCommentContent(req.body?.content);
+  if ("error" in result) {
+    res.status(400).json({ error: { message: result.error } });
+    return;
+  }
+
+  try {
+    const note = await getPrisma().internalNote.create({
+      data: { ticketId: id, authorId: req.user!.id, content: result.content },
+      include: { author: { select: { name: true } } },
+    });
+    res.status(201).json({
+      data: {
+        id: note.id,
+        ticketId: note.ticketId,
+        authorId: note.authorId,
+        authorName: note.author.name,
+        content: note.content,
+        createdAt: note.createdAt,
+      },
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to post note" } });
+  }
+});
+
+app.get("/api/tickets/:id/notes", ...requireStaffRead, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  const ticket = await getPrisma().ticket.findUnique({ where: { id } });
+  if (!ticket) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  try {
+    const notes = await getPrisma().internalNote.findMany({
+      where: { ticketId: id },
+      include: { author: { select: { name: true } } },
+      orderBy: { id: "asc" },
+    });
+    res.status(200).json({
+      data: notes.map((n) => ({ id: n.id, authorName: n.author.name, content: n.content, createdAt: n.createdAt })),
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load notes" } });
   }
 });
 
