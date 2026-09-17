@@ -1,65 +1,79 @@
-import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import RequesterSelector, { REQUESTER_STORAGE_KEY } from "./RequesterSelector.js";
+import { AuthProvider, useAuth } from "./AuthContext.js";
+import Login from "./Login.js";
+import ChangePassword from "./ChangePassword.js";
 import Shell from "./Shell.js";
 import CreateTicket from "./CreateTicket.js";
 import MyTickets from "./MyTickets.js";
 import RequesterTicketDetail from "./RequesterTicketDetail.js";
-import { getActiveRequesters, Requester } from "./api.js";
+import { Role } from "./api.js";
 
-function getStoredRequesterId(): number | null {
-  const raw = localStorage.getItem(REQUESTER_STORAGE_KEY);
-  return raw ? Number(raw) : null;
+const ROLE_HOME: Record<Role, string> = {
+  REQUESTER: "/tickets",
+  IT_STAFF: "/queue",
+  ADMINISTRATOR: "/admin/users",
+};
+
+// Issue 33 — every screen lives under one Router now (Login and Change
+// Password included), so Login's post-submit navigate() and the guards
+// below are ordinary route-level redirects rather than component swaps.
+export default function AppRoot() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  );
 }
 
-// Issue 6 — gates the app behind the Development Requester Selector (BR-03).
-// Issue 7 — wraps the selected Requester in the Zen Green shell + routing.
-export default function AppRoot() {
-  const [requesterId, setRequesterId] = useState<number | null>(getStoredRequesterId());
-  const [requester, setRequester] = useState<Requester | null>(null);
+function AppRoutes() {
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    if (requesterId === null) {
-      setRequester(null);
-      return;
-    }
-    let cancelled = false;
-    getActiveRequesters()
-      .then((list) => {
-        if (!cancelled) setRequester(list.find((r) => r.id === requesterId) ?? null);
-      })
-      .catch(() => {
-        // Resolving the Requester's name failed (e.g. backend unreachable).
-        // Fall back to the Selector rather than a permanent "Loading…" —
-        // it already has its own tested failure/retry state.
-        if (!cancelled) {
-          localStorage.removeItem(REQUESTER_STORAGE_KEY);
-          setRequesterId(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [requesterId]);
-
-  if (requesterId === null) {
-    return <RequesterSelector onSelect={setRequesterId} />;
-  }
-
-  if (!requester) {
+  if (loading) {
     return <p className="text-muted p-4">Loading…</p>;
   }
 
   return (
-    <BrowserRouter>
-      <Shell requester={requester} onChangeRequester={() => setRequesterId(null)}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/tickets" replace />} />
-          <Route path="/tickets" element={<MyTickets requesterId={requester.id} />} />
-          <Route path="/tickets/new" element={<CreateTicket requesterId={requester.id} />} />
-          <Route path="/tickets/:id" element={<RequesterTicketDetail requesterId={requester.id} />} />
-        </Routes>
-      </Shell>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route
+        path="/change-password"
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <ChangePassword mode={user.mustChangePassword ? "mandatory" : "voluntary"} />
+          )
+        }
+      />
+      <Route path="/*" element={<AuthenticatedApp />} />
+    </Routes>
+  );
+}
+
+// Everything else requires a session with mustChangePassword already
+// cleared — the mandatory Change Password screen has no nav and no way to
+// reach any of this (ui-spec.md §3), enforced here, not just by hiding a link.
+function AuthenticatedApp() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
+
+  return (
+    <Shell user={user}>
+      <Routes>
+        <Route path="/" element={<Navigate to={ROLE_HOME[user.role]} replace />} />
+        {user.role === "REQUESTER" && (
+          <>
+            <Route path="/tickets" element={<MyTickets requesterId={user.id} />} />
+            <Route path="/tickets/new" element={<CreateTicket requesterId={user.id} />} />
+            <Route path="/tickets/:id" element={<RequesterTicketDetail requesterId={user.id} />} />
+          </>
+        )}
+        {/* IT Staff Ticket Queue (/queue) and Administrator Users
+            (/admin/users) land in Issues 35 and 38. */}
+      </Routes>
+    </Shell>
   );
 }

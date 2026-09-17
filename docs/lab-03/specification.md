@@ -67,6 +67,32 @@ the Ticket workflow.
 - **FR-07** The application shell displays the authenticated user's name and role and
   shows only navigation destinations permitted for that role.
 
+### Authorization Matrix
+
+The concrete table FR-06 refers to — every row is enforced server-side regardless of
+what the frontend renders. "Read-only" means the GET is allowed but every write
+operation on that resource is not.
+
+| Operation | Requester | IT Staff | Administrator |
+|---|---|---|---|
+| Login, logout, view own identity, change own password | Yes | Yes | Yes |
+| Create/list/search/filter/sort/page own Tickets; view own Ticket detail; add/download/remove own Attachments | Yes — own only, 404 if not owner | No | No |
+| Post a Public Comment on a Ticket | Yes — own Ticket only | Yes — any Ticket | No |
+| View Public Comments on a Ticket | Yes — own Ticket only | Yes — any Ticket | Yes — read-only |
+| Indicate "problem appears resolved" | Yes — own Ticket only | No | No |
+| View/search/filter/sort/page the shared Ticket Queue | No | Yes | Yes — read-only |
+| View any Ticket's detail | No | Yes | Yes — read-only |
+| Claim or reassign Ticket ownership | No | Yes | No |
+| Set or change IT Priority | No | Yes | No |
+| Change Ticket status (per the transition matrix) | No | Yes | No |
+| Set the Resolution Summary | No | Yes | No |
+| Create an Internal Note | No | Yes | No |
+| View Internal Notes | No | Yes | Yes — read-only |
+| List/search/filter Users | No | No | Yes |
+| Create a User | No | No | Yes |
+| Edit a User (name, email, role, active state) | No | No | Yes |
+| Set a new initial password for a User | No | No | Yes |
+
 **Requester (continued from Lab 2)**
 - **FR-08** A Requester continues to create, list, search, filter, sort, and page
   through their own Tickets, and add/download/soft-remove Attachments, using their

@@ -1,8 +1,14 @@
 import crypto from "crypto";
+import "dotenv/config";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import type { Role } from "@prisma/client";
 
+// Explicit, not incidental: relying on @prisma/client's own bundled dotenv
+// side effect meant this module only saw JWT_SECRET if something imported
+// prisma.ts first — true through app.ts's own import order, false the
+// moment a test imports session.ts directly (as authorization.api.test.ts
+// does, to exercise requireRole without a real business route yet).
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is required");
@@ -101,6 +107,23 @@ export function requireAuth(req: AuthedRequest, res: Response, next: NextFunctio
     return;
   }
   next();
+}
+
+// FR-06 — the approved authorization matrix (specification.md), enforced
+// server-side regardless of what the frontend renders. Precedence matches
+// the rest of the API: no session -> 401, wrong role -> 403.
+export function requireRole(...allowedRoles: Role[]) {
+  return (req: AuthedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: { message: "Authentication required" } });
+      return;
+    }
+    if (!allowedRoles.includes(req.user.role)) {
+      res.status(403).json({ error: { message: "Forbidden for this role" } });
+      return;
+    }
+    next();
+  };
 }
 
 // BR-02/BR-04 (briefing) — every route other than these three is blocked
