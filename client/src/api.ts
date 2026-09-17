@@ -1,5 +1,84 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
+export type Role = "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  mustChangePassword: boolean;
+}
+
+// Issue 32/33 — every auth call carries the httpOnly session cookie
+// cross-port (Vite 5173 -> API 3000); the server's CORS config only accepts
+// this because it names an explicit origin (never "*") with credentials:true.
+async function readAuthError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.error?.message === "string") return body.error.message;
+  } catch {
+    // fall through to the generic fallback
+  }
+  return fallback;
+}
+
+export async function login(email: string, password: string): Promise<AuthUser> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    throw new Error(await readAuthError(res, "Unable to sign in. Please try again."));
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    // Best-effort: the caller always clears local state regardless.
+  }
+}
+
+export async function getCurrentUser(): Promise<AuthUser> {
+  const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
+  if (!res.ok) {
+    throw new Error("Not authenticated");
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/auth/change-password`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) {
+    throw new Error(await readAuthError(res, "Unable to change password. Please try again."));
+  }
+}
+
 export interface Category {
   id: number;
   name: string;
@@ -50,6 +129,18 @@ export interface Attachment {
   removalReason: string | null;
 }
 
+// Issue 35 — grown from Lab 2's NEW-only literal to the full transition
+// vocabulary (BRIEFING_AGENT_LAB03.md).
+export type TicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
+
 export interface Ticket {
   id: number;
   ticketNumber: string;
@@ -59,13 +150,37 @@ export interface Ticket {
   summary: string;
   description: string;
   requestedPriority: RequestedPriority;
-  status: "NEW";
+  status: TicketStatus;
   createdAt: string;
   updatedAt: string;
+  // Issue 36 — present on every Ticket row since the Issue 35 migration;
+  // typed on the base interface because the Requester's own detail screen
+  // reads resolutionSummary/requesterResolutionIndicatedAt too (ui-spec.md
+  // §6), not just the IT Staff one.
+  resolutionSummary: string | null;
+  requesterResolutionIndicatedAt: string | null;
+}
+
+// Issue 37 — authorRole lets the UI badge who wrote each comment
+// (Requester/IT Staff/Administrator), per ui-spec.md §5.
+export interface PublicComment {
+  id: number;
+  authorName: string;
+  authorRole: Role;
+  content: string;
+  createdAt: string;
+}
+
+export interface InternalNote {
+  id: number;
+  authorName: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface TicketDetail extends Ticket {
   attachments: Attachment[];
+  publicComments: PublicComment[];
 }
 
 export interface CreateTicketInput {
@@ -91,8 +206,10 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   return fallback;
 }
 
-// Issue 8 — POST /api/tickets. requesterId goes in the header, never the body
-// (api-spec.md), since ownership always comes from X-Dev-Requester-Id.
+// Issue 34 — ownership comes from the session cookie, never a client-
+// supplied id (BR-03); every Requester-scoped call needs credentials:
+// "include" so the cookie actually crosses the Vite (5173) -> API (3000)
+// ports (specification.md §11), same as the auth calls above.
 // Issue 11 — optional attachments switch the request to multipart/form-data;
 // with none, it stays plain JSON (unchanged from Issue 8).
 //
@@ -100,11 +217,7 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 // detail goes to console.error only — the same leak (raw "Failed to fetch"
 // reaching the UI) was flagged on Lab 1's checkSystem() and is worth not
 // repeating here.
-export async function createTicket(
-  requesterId: number,
-  input: CreateTicketInput,
-  files: File[] = []
-): Promise<TicketDetail> {
+export async function createTicket(input: CreateTicketInput, files: File[] = []): Promise<TicketDetail> {
   let res: Response;
   try {
     if (files.length > 0) {
@@ -117,13 +230,14 @@ export async function createTicket(
       files.forEach((f) => formData.append("attachments", f));
       res = await fetch(`${API_URL}/api/tickets`, {
         method: "POST",
-        headers: { "X-Dev-Requester-Id": String(requesterId) },
+        credentials: "include",
         body: formData,
       });
     } else {
       res = await fetch(`${API_URL}/api/tickets`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Dev-Requester-Id": String(requesterId) },
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
     }
@@ -142,12 +256,10 @@ export async function createTicket(
 // Issue 10 — Requester Ticket Detail, read-only. 404 (owned or not found,
 // same response either way — BR-10) is treated as "Ticket not found" by the
 // caller; there's no separate "forbidden" case to distinguish.
-export async function getTicket(requesterId: number, id: number): Promise<TicketDetail> {
+export async function getTicket(id: number): Promise<TicketDetail> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/tickets/${id}`, {
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
-    });
+    res = await fetch(`${API_URL}/api/tickets/${id}`, { credentials: "include" });
   } catch (err) {
     console.error(err);
     throw new Error("Unable to reach the server. Please try again.");
@@ -164,7 +276,7 @@ export async function getTicket(requesterId: number, id: number): Promise<Ticket
 }
 
 // Issue 11 — Attachment lifecycle.
-export async function addAttachments(requesterId: number, ticketId: number, files: File[]): Promise<Attachment[]> {
+export async function addAttachments(ticketId: number, files: File[]): Promise<Attachment[]> {
   const formData = new FormData();
   files.forEach((f) => formData.append("attachments", f));
 
@@ -172,7 +284,7 @@ export async function addAttachments(requesterId: number, ticketId: number, file
   try {
     res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
       method: "POST",
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
+      credentials: "include",
       body: formData,
     });
   } catch (err) {
@@ -187,12 +299,13 @@ export async function addAttachments(requesterId: number, ticketId: number, file
   return json.data;
 }
 
-export async function removeAttachment(requesterId: number, attachmentId: number, reason: string): Promise<Attachment> {
+export async function removeAttachment(attachmentId: number, reason: string): Promise<Attachment> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json", "X-Dev-Requester-Id": String(requesterId) },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),
     });
   } catch (err) {
@@ -207,15 +320,12 @@ export async function removeAttachment(requesterId: number, attachmentId: number
   return json.data;
 }
 
-// Downloads via fetch + Blob (not a plain <a href>) because the download
-// route needs the same X-Dev-Requester-Id header as every other requester-
-// scoped route — a bare anchor click can't attach a custom header.
-export async function downloadAttachment(requesterId: number, attachmentId: number, filename: string): Promise<void> {
+// Downloads via fetch + Blob (not a plain <a href>) because a bare anchor
+// click can't send the session cookie's credentials:"include" itself.
+export async function downloadAttachment(attachmentId: number, filename: string): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
-    });
+    res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, { credentials: "include" });
   } catch (err) {
     console.error(err);
     throw new Error("Unable to reach the server. Please try again.");
@@ -235,7 +345,7 @@ export async function downloadAttachment(requesterId: number, attachmentId: numb
 }
 
 // Issue 9 — My Tickets: search, filter, sort, paginate the current
-// Requester's own Tickets (always server-scoped by X-Dev-Requester-Id, BR-11).
+// Requester's own Tickets (always server-scoped by the session, BR-11).
 export interface MyTicketsQuery {
   search?: string;
   categoryId?: number;
@@ -252,7 +362,7 @@ export interface MyTicketsResult {
   meta: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
-export async function getMyTickets(requesterId: number, query: MyTicketsQuery): Promise<MyTicketsResult> {
+export async function getMyTickets(query: MyTicketsQuery): Promise<MyTicketsResult> {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.categoryId !== undefined) params.set("categoryId", String(query.categoryId));
@@ -265,9 +375,7 @@ export async function getMyTickets(requesterId: number, query: MyTicketsQuery): 
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/tickets?${params.toString()}`, {
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
-    });
+    res = await fetch(`${API_URL}/api/tickets?${params.toString()}`, { credentials: "include" });
   } catch (err) {
     console.error(err);
     throw new Error("Unable to reach the server. Please try again.");
@@ -298,4 +406,243 @@ export async function checkSystem(): Promise<SystemStatus> {
   const categories: Category[] = await categoriesRes.json();
 
   return { online: true, categories };
+}
+
+// Issue 35 — IT Staff Ticket Queue: shared across every Requester, so no
+// requesterId scoping the way MyTickets has (api-spec.md).
+export interface StaffTicket extends Ticket {
+  itPriority: RequestedPriority;
+  ticketOwnerId: number | null;
+  ticketOwnerName: string | null;
+  categoryName: string;
+}
+
+export interface StaffUser {
+  id: number;
+  name: string;
+}
+
+export async function getStaffUsers(): Promise<StaffUser[]> {
+  const res = await fetch(`${API_URL}/api/staff/users`, { credentials: "include" });
+  if (!res.ok) throw new Error("Unable to load staff users.");
+  const json = await res.json();
+  return json.data;
+}
+
+export interface StaffQueueQuery {
+  search?: string;
+  status?: TicketStatus;
+  itPriority?: RequestedPriority;
+  ownerId?: number | "unassigned";
+  categoryId?: number;
+  sort?: "createdAt" | "updatedAt" | "itPriority" | "ticketNumber";
+  order?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface StaffQueueResult {
+  data: StaffTicket[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+}
+
+export async function getStaffQueue(query: StaffQueueQuery): Promise<StaffQueueResult> {
+  const params = new URLSearchParams();
+  if (query.search) params.set("search", query.search);
+  if (query.status) params.set("status", query.status);
+  if (query.itPriority) params.set("itPriority", query.itPriority);
+  if (query.ownerId !== undefined) params.set("ownerId", String(query.ownerId));
+  if (query.categoryId !== undefined) params.set("categoryId", String(query.categoryId));
+  if (query.sort) params.set("sort", query.sort);
+  if (query.order) params.set("order", query.order);
+  params.set("page", String(query.page ?? 1));
+  params.set("pageSize", String(query.pageSize ?? 10));
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/staff/tickets?${params.toString()}`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (res.status === 403) {
+    throw new Error("You do not have access to the ticket queue.");
+  }
+  if (!res.ok) {
+    console.error(`getStaffQueue failed with status ${res.status}`);
+    throw new Error("Unable to load the ticket queue. Please try again.");
+  }
+  return res.json();
+}
+
+// Issue 36 — IT Staff Ticket Detail and workflow.
+export interface StaffTicketDetail extends StaffTicket {
+  categoryName: string;
+  attachments: Attachment[];
+  publicComments: PublicComment[];
+  internalNotes: InternalNote[];
+}
+
+async function readStaffError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.error?.message === "string") return body.error.message;
+  } catch {
+    // fall through to the generic fallback
+  }
+  return fallback;
+}
+
+export async function getStaffTicket(id: number): Promise<StaffTicketDetail> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/staff/tickets/${id}`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (res.status === 403) throw new Error("You do not have access to this ticket.");
+  if (res.status === 404) throw new Error("Ticket not found.");
+  if (!res.ok) throw new Error("Unable to load ticket. Please try again.");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function setTicketOwner(id: number, ticketOwnerId: number | null): Promise<void> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/owner`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticketOwnerId }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update the ticket owner."));
+}
+
+export async function setTicketItPriority(id: number, itPriority: RequestedPriority): Promise<void> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/priority`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itPriority }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update IT Priority."));
+}
+
+export async function setTicketStatus(id: number, status: TicketStatus, resolutionSummary?: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/status`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, resolutionSummary }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update status."));
+}
+
+// Requester-only — BR-05: sets the signal, never the formal status.
+export async function indicateResolution(id: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/tickets/${id}/resolution-indicated`, {
+    method: "PATCH",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to record your response. Please try again."));
+}
+
+// Issue 37 — Public Comments (owning Requester or any IT Staff) and
+// Internal Notes (IT Staff only). Both append-only: no update/remove calls
+// exist because no such route exists server-side (BR-25).
+export async function postComment(ticketId: number, content: string): Promise<PublicComment> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/comments`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to post your comment. Please try again."));
+  const json = await res.json();
+  return json.data;
+}
+
+export async function postNote(ticketId: number, content: string): Promise<InternalNote> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/notes`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to post the internal note. Please try again."));
+  const json = await res.json();
+  return json.data;
+}
+
+// Issue 38 — Administrator user management.
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+}
+
+export interface AdminUserQuery {
+  search?: string;
+  role?: Role;
+}
+
+export interface AdminUserInput {
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+}
+
+export async function getAdminUsers(query: AdminUserQuery): Promise<AdminUser[]> {
+  const params = new URLSearchParams();
+  if (query.search) params.set("search", query.search);
+  if (query.role) params.set("role", query.role);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/admin/users?${params.toString()}`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (res.status === 403) throw new Error("You do not have access to user management.");
+  if (!res.ok) throw new Error("Unable to load users. Please try again.");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function createAdminUser(input: AdminUserInput & { initialPassword: string }): Promise<AdminUser> {
+  const res = await fetch(`${API_URL}/api/admin/users`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to create the user. Please try again."));
+  const json = await res.json();
+  return json.data;
+}
+
+export async function updateAdminUser(id: number, input: Partial<AdminUserInput>): Promise<AdminUser> {
+  const res = await fetch(`${API_URL}/api/admin/users/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to save this user. Please try again."));
+  const json = await res.json();
+  return json.data;
+}
+
+export async function setAdminUserPassword(id: number, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/users/${id}/password`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newPassword }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to set the new password. Please try again."));
 }

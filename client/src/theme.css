@@ -50,3 +50,8 @@ body {
   background: var(--zg-pale);
   color: var(--zg-success);
 }
+.badge-outline {
+  background: var(--zg-surface);
+  color: var(--zg-primary);
+  border: 1px solid var(--zg-primary);
+}

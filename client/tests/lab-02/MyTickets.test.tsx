@@ -4,27 +4,19 @@ import { MemoryRouter } from "react-router-dom";
 import MyTickets from "../../src/MyTickets.js";
 import * as api from "../../src/api.js";
 
-function renderMyTickets(requesterId = 1) {
+// Issue 34 — MyTickets no longer takes a requesterId prop; ownership scoping
+// moved server-side to the session. The old "switching Requester mid-session
+// reloads the list" test is gone with it — there is no more in-place
+// Requester switch, only logging out and back in as someone else, which
+// unmounts the whole authenticated app rather than re-rendering this
+// component with a new prop.
+function renderMyTickets() {
   return render(
     <MemoryRouter>
-      <MyTickets requesterId={requesterId} />
+      <MyTickets />
     </MemoryRouter>
   );
 }
-
-const sampleTicket = {
-  id: 1,
-  ticketNumber: "TKT-2026-000001",
-  requesterId: 1,
-  categoryId: 1,
-  relatedSystemId: 1,
-  summary: "Printer jam",
-  description: "Paper stuck",
-  requestedPriority: "MEDIUM" as const,
-  status: "NEW" as const,
-  createdAt: "2026-09-01T00:00:00.000Z",
-  updatedAt: "2026-09-01T00:00:00.000Z",
-};
 
 describe("MyTickets", () => {
   afterEach(() => {
@@ -51,27 +43,5 @@ describe("MyTickets", () => {
       userEvent.type(searchBox, "nothing matches this")
     );
     expect(await screen.findByText(/no tickets match/i)).toBeInTheDocument();
-  });
-
-  it("reloads and shows only the new Requester's Tickets when the Requester changes", async () => {
-    const spy = vi.spyOn(api, "getMyTickets").mockResolvedValueOnce({
-      data: [sampleTicket],
-      meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
-    });
-    const { rerender } = renderMyTickets(1);
-    // Both the desktop table and mobile card render in jsdom at once (no real
-    // CSS media query evaluation), so the ticket number legitimately appears
-    // twice — that's the responsive markup, not a bug.
-    expect((await screen.findAllByText("TKT-2026-000001")).length).toBeGreaterThan(0);
-
-    spy.mockResolvedValueOnce({ data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 } });
-    rerender(
-      <MemoryRouter>
-        <MyTickets requesterId={2} />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText(/create your first ticket/i)).toBeInTheDocument();
-    expect(screen.queryAllByText("TKT-2026-000001")).toHaveLength(0);
   });
 });

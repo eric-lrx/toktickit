@@ -65,20 +65,24 @@ still resolves to `404`, now derived from the session instead of the header.
 - All require an authenticated `REQUESTER` session; `401` with no session.
 
 ### POST /api/tickets/:id/comments
-Adds a Public Comment. Any authenticated user who can already view the Ticket
-(owning Requester, any IT Staff, any Administrator) may post.
+Adds a Public Comment. The owning Requester or any IT Staff user may post — not
+Administrator, who is read-only on the ticket workflow (Authorization Matrix, §4).
 
 Body: `{ "content": string }`, 1–4000 chars after trimming, not whitespace-only.
 
 - `201` → `{ "data": { "id": 1, "ticketId": 1, "authorId": 1, "authorName": "...", "content": "...", "createdAt": "..." } }`
 - `400` — empty/whitespace-only content, or over 4000 chars
+- `403` — caller is an Administrator
 - `404` — Ticket not found or not owned (Requester caller only)
 
 ### GET /api/tickets/:id/comments
-Returns Public Comments for a Ticket, oldest first. Same visibility as the Ticket
-itself.
+Returns Public Comments for a Ticket, oldest first. Visible to the owning
+Requester, any IT Staff, and any Administrator (read-only) — BR-04. Every role can
+view *some* Ticket's comments, so the only rejection is ownership, not role — a
+different Requester gets `404` (BR-16), never `403`, identical to a nonexistent Ticket.
 
 - `200` → `{ "data": [ { "id": 1, "authorName": "...", "authorRole": "REQUESTER", "content": "...", "createdAt": "..." } ] }`
+- `404` — Ticket not found, or a different Requester than the owner
 
 ### PATCH /api/tickets/:id/resolution-indicated
 Requester-only. Sets the "problem appears resolved" signal.
@@ -110,8 +114,18 @@ Shared queue — every Ticket, not just the caller's own.
 
 Secondary sort always `id desc`.
 
-- `200` → `{ "data": [ { ...ticket, "itPriority": "MEDIUM", "ticketOwnerId": 3, "ticketOwnerName": "...", "status": "OPEN" } ], "meta": { "page": 1, "pageSize": 10, "total": 87, "totalPages": 9 } }`
+- `200` → `{ "data": [ { ...ticket, "itPriority": "MEDIUM", "ticketOwnerId": 3, "ticketOwnerName": "...", "categoryName": "...", "status": "OPEN" } ], "meta": { "page": 1, "pageSize": 10, "total": 87, "totalPages": 9 } }`
 - `400` — invalid parameter value, naming the offending parameter
+- `403` — caller is a Requester
+
+### GET /api/staff/users
+Not in the original contract — added while building the queue's Owner filter
+(ui-spec.md §4 specifies a named dropdown with an explicit "Unassigned" option, not
+a raw id input), and reused by Issue 36's claim/reassign control. IT Staff needs
+this list too, not just Administrator, so it can't be Issue 38's admin-only user
+list.
+
+- `200` → `{ "data": [ { "id": 3, "name": "..." } ] }` — every active `IT_STAFF`/`ADMINISTRATOR` user, name-sorted
 - `403` — caller is a Requester
 
 ### GET /api/staff/tickets/:id
@@ -150,14 +164,16 @@ Body: `{ "status": <one of the 8 statuses>, "resolutionSummary"?: string }`.
   matrix (`specification.md` §7)
 
 ### POST /api/tickets/:id/notes
-Creates an Internal Note. IT Staff or Administrator only.
+Creates an Internal Note. IT Staff only — Administrator can view Notes (below) but
+not create them, same read-only-on-the-workflow line as everything else in §4's
+Authorization Matrix.
 
 Body: `{ "content": string }`, same length/whitespace rules as Public Comments.
 
 - `201` → `{ "data": { "id": 1, "ticketId": 1, "authorId": 3, "authorName": "...", "content": "...", "createdAt": "..." } }`
 - `400` — empty/whitespace-only content, or over 4000 chars
-- `403` → `{ "error": { "message": "Forbidden." } }` — caller is a Requester; no note
-  content is included in the response (AC-04)
+- `403` → `{ "error": { "message": "Forbidden." } }` — caller is a Requester or an
+  Administrator; no note content is included in the response (AC-04)
 - `404` — Ticket not found
 
 ### GET /api/tickets/:id/notes
