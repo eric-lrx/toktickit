@@ -573,3 +573,76 @@ export async function postNote(ticketId: number, content: string): Promise<Inter
   const json = await res.json();
   return json.data;
 }
+
+// Issue 38 — Administrator user management.
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+}
+
+export interface AdminUserQuery {
+  search?: string;
+  role?: Role;
+}
+
+export interface AdminUserInput {
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+}
+
+export async function getAdminUsers(query: AdminUserQuery): Promise<AdminUser[]> {
+  const params = new URLSearchParams();
+  if (query.search) params.set("search", query.search);
+  if (query.role) params.set("role", query.role);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/admin/users?${params.toString()}`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (res.status === 403) throw new Error("You do not have access to user management.");
+  if (!res.ok) throw new Error("Unable to load users. Please try again.");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function createAdminUser(input: AdminUserInput & { initialPassword: string }): Promise<AdminUser> {
+  const res = await fetch(`${API_URL}/api/admin/users`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to create the user. Please try again."));
+  const json = await res.json();
+  return json.data;
+}
+
+export async function updateAdminUser(id: number, input: Partial<AdminUserInput>): Promise<AdminUser> {
+  const res = await fetch(`${API_URL}/api/admin/users/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to save this user. Please try again."));
+  const json = await res.json();
+  return json.data;
+}
+
+export async function setAdminUserPassword(id: number, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/users/${id}/password`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newPassword }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to set the new password. Please try again."));
+}
