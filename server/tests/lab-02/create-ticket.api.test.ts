@@ -4,24 +4,28 @@ import fs from "fs/promises";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
 import { UPLOAD_DIR } from "../../src/attachmentStorage.js";
+import { loginAs } from "../lab-03/testAuth.js";
 
 // Requires the DB to be migrated and seeded first (npx prisma migrate dev && npm run prisma:seed).
+// Issue 34 — migrated off X-Dev-Requester-Id to a real session cookie.
+// The old "inactive Requester" case is gone: an inactive account can no
+// longer reach this far at all, since login itself rejects it (API-04);
+// there is no separate per-request check left to test here.
 
 let activeRequesterId: number;
-let inactiveRequesterId: number;
+let cookie: string;
 let categoryId: number;
 let relatedSystemId: number;
 
 beforeAll(async () => {
   const prisma = getPrisma();
-  const active = await prisma.requesterUser.findFirstOrThrow({ where: { isActive: true } });
-  const inactive = await prisma.requesterUser.findFirstOrThrow({ where: { isActive: false } });
+  const active = await prisma.user.findFirstOrThrow({ where: { isActive: true, role: "REQUESTER" } });
   const category = await prisma.category.findFirstOrThrow({ where: { isActive: true } });
   const relatedSystem = await prisma.relatedSystem.findFirstOrThrow({ where: { isActive: true } });
   activeRequesterId = active.id;
-  inactiveRequesterId = inactive.id;
   categoryId = category.id;
   relatedSystemId = relatedSystem.id;
+  cookie = await loginAs(active.email);
 });
 
 function validPayload() {
@@ -36,10 +40,7 @@ function validPayload() {
 
 describe("POST /api/tickets", () => {
   it("creates a Ticket for a valid payload and returns the generated Ticket Number", async () => {
-    const res = await request(app)
-      .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(activeRequesterId))
-      .send(validPayload());
+    const res = await request(app).post("/api/tickets").set("Cookie", cookie).send(validPayload());
 
     expect(res.status).toBe(201);
     expect(res.body.data.ticketNumber).toMatch(/^TKT-\d{4}-\d{6}$/);
@@ -50,30 +51,22 @@ describe("POST /api/tickets", () => {
   it("returns 400 naming the field when Summary is missing", async () => {
     const res = await request(app)
       .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(activeRequesterId))
+      .set("Cookie", cookie)
       .send({ ...validPayload(), summary: "" });
 
     expect(res.status).toBe(400);
     expect(res.body.error.message).toMatch(/summary/i);
   });
 
-  it("returns 400 when X-Dev-Requester-Id is missing", async () => {
+  it("returns 401 when there is no session", async () => {
     const res = await request(app).post("/api/tickets").send(validPayload());
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when X-Dev-Requester-Id belongs to an inactive Requester", async () => {
-    const res = await request(app)
-      .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(inactiveRequesterId))
-      .send(validPayload());
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
   });
 
   it("creates a Ticket with a valid attachment included", async () => {
     const res = await request(app)
       .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(activeRequesterId))
+      .set("Cookie", cookie)
       .field("categoryId", String(categoryId))
       .field("relatedSystemId", String(relatedSystemId))
       .field("summary", "Ticket with attachment")
@@ -89,7 +82,7 @@ describe("POST /api/tickets", () => {
   it("returns 415 for a disallowed attachment type at creation", async () => {
     const res = await request(app)
       .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(activeRequesterId))
+      .set("Cookie", cookie)
       .field("categoryId", String(categoryId))
       .field("relatedSystemId", String(relatedSystemId))
       .field("summary", "Ticket with bad attachment")
@@ -103,7 +96,7 @@ describe("POST /api/tickets", () => {
     const big = Buffer.alloc(5 * 1024 * 1024 + 1, 1);
     const res = await request(app)
       .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(activeRequesterId))
+      .set("Cookie", cookie)
       .field("categoryId", String(categoryId))
       .field("relatedSystemId", String(relatedSystemId))
       .field("summary", "Ticket with big attachment")
@@ -118,7 +111,7 @@ describe("POST /api/tickets", () => {
 
     const res = await request(app)
       .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(activeRequesterId))
+      .set("Cookie", cookie)
       .field("categoryId", "999999") // invalid category — fails validation after the file is written
       .field("relatedSystemId", String(relatedSystemId))
       .field("summary", "Should not be created")

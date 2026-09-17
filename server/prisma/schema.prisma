@@ -18,14 +18,29 @@ model Category {
   tickets   Ticket[]
 }
 
-// Lab 2 — temporary Development Requester "fake login" (BR-03). Not authentication.
-model RequesterUser {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  tickets   Ticket[]
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
+}
+
+// Lab 3 — renamed in place from RequesterUser (Lab 2's temporary "fake login",
+// BR-03). Real authentication: bcrypt passwordHash, one role, mustChangePassword
+// gate (specification.md §7/§11, BR-01/BR-02/BR-06).
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tickets            Ticket[]
+  ownedTickets       Ticket[] @relation("TicketOwner")
+  publicComments     PublicComment[]
+  internalNotes      InternalNote[]
 }
 
 model RelatedSystem {
@@ -42,16 +57,25 @@ enum RequestedPriority {
   HIGH
 }
 
-// Lab 2 declares only NEW (see specification.md §11 — status workflow is Lab 3).
+// Lab 3, Issue 35 — grown from NEW alone to the full transition-table
+// vocabulary (BRIEFING_AGENT_LAB03.md). ALTER TYPE ... ADD VALUE, never a
+// recreation, so every existing NEW row is untouched.
 enum TicketStatus {
   NEW
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_REQUESTER
+  RESOLVED
+  CLOSED
+  REOPENED
+  CANCELLED
 }
 
 model Ticket {
   id                Int               @id @default(autoincrement())
   ticketNumber      String            @unique
   requesterId       Int
-  requester         RequesterUser     @relation(fields: [requesterId], references: [id])
+  requester         User              @relation(fields: [requesterId], references: [id])
   categoryId        Int
   category          Category          @relation(fields: [categoryId], references: [id])
   relatedSystemId   Int
@@ -64,8 +88,58 @@ model Ticket {
   updatedAt         DateTime          @updatedAt
   attachments       Attachment[]
 
+  // Lab 3, Issue 35 (specification.md §7 migration path, steps 5-7) — added
+  // together in one migration since they're all part of the same "grow the
+  // Ticket for the IT Staff workflow" step, even though only itPriority is
+  // consumed by this Issue's queue; Issues 36/37 consume the rest without
+  // any further schema churn.
+  //
+  // itPriority reuses the RequestedPriority enum rather than declaring a
+  // duplicate ITPriority type with the identical LOW|MEDIUM|HIGH values —
+  // one Requester-set value, one IT-Staff-set value, same vocabulary.
+  itPriority                    RequestedPriority
+  ticketOwnerId                 Int?
+  ticketOwner                   User?     @relation("TicketOwner", fields: [ticketOwnerId], references: [id])
+  resolutionSummary             String?
+  requesterResolutionIndicatedAt DateTime?
+
+  publicComments PublicComment[]
+  internalNotes  InternalNote[]
+
   @@index([requesterId])
   @@index([createdAt])
+  @@index([ticketOwnerId])
+  @@index([status])
+}
+
+// Issue 37 — two separate tables, not one table with an isInternal flag: a
+// forgotten `WHERE isInternal = false` filter would leak Internal Notes to
+// a Requester through the Public Comments endpoint; with separate tables,
+// the Requester-facing endpoint structurally has no column to leak from
+// (specification.md §7). Both are append-only (BR-25) — no updatedAt, no
+// edit/delete route exists anywhere in app.ts.
+model PublicComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 // Issue 11 — Attachment lifecycle. storedName is a UUID + validated extension,

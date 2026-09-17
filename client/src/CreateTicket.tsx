@@ -13,12 +13,8 @@ import {
 
 type Status = "idle" | "submitting" | "success" | "error";
 
-interface Props {
-  requesterId: number;
-}
-
 // Issue 8 — Create Ticket. Issue 11 — optional attachments at creation time.
-export default function CreateTicket({ requesterId }: Props) {
+export default function CreateTicket() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
   const [categoryId, setCategoryId] = useState("");
@@ -57,7 +53,6 @@ export default function CreateTicket({ requesterId }: Props) {
     setApiError("");
     try {
       const ticket = await createTicket(
-        requesterId,
         {
           categoryId: Number(categoryId),
           relatedSystemId: Number(relatedSystemId),

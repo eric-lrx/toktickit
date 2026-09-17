@@ -21,7 +21,7 @@ async function fillValidForm() {
 function renderCreateTicket() {
   render(
     <MemoryRouter>
-      <CreateTicket requesterId={1} />
+      <CreateTicket />
     </MemoryRouter>
   );
 }
@@ -70,7 +70,10 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     await screen.findByText(/TKT-2026-000001/);
   });
@@ -89,7 +92,10 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     renderCreateTicket();
     await fillValidForm();
@@ -123,7 +129,10 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     renderCreateTicket();
     await fillValidForm();
@@ -147,7 +156,10 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
+      publicComments: [],
     });
     renderCreateTicket();
     await fillValidForm();

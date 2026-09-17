@@ -16,14 +16,17 @@ const sampleTicket = {
   status: "NEW" as const,
   createdAt: "2026-09-01T00:00:00.000Z",
   updatedAt: "2026-09-01T00:00:00.000Z",
+  resolutionSummary: null,
+  requesterResolutionIndicatedAt: null,
   attachments: [],
+  publicComments: [],
 };
 
-function renderDetail(requesterId = 1) {
+function renderDetail() {
   return render(
     <MemoryRouter initialEntries={["/tickets/1"]}>
       <Routes>
-        <Route path="/tickets/:id" element={<RequesterTicketDetail requesterId={requesterId} />} />
+        <Route path="/tickets/:id" element={<RequesterTicketDetail />} />
       </Routes>
     </MemoryRouter>
   );
@@ -34,14 +37,19 @@ describe("RequesterTicketDetail", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the Ticket's fields as read-only, with no editable inputs", async () => {
+  it("renders the Ticket's fields as read-only, with no editable inputs outside the comment box", async () => {
     vi.spyOn(api, "getTicket").mockResolvedValue(sampleTicket);
     renderDetail();
 
     expect(await screen.findByText("TKT-2026-000001")).toBeInTheDocument();
     expect(screen.getByText("Printer jam")).toBeInTheDocument();
     expect(screen.getByText("Paper stuck in tray 2")).toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    // Issue 37 adds the Public Comments textarea to this screen — it is the
+    // only textbox; none of the Ticket's own fields (summary/description/
+    // priority/status) are editable.
+    const textboxes = screen.queryAllByRole("textbox");
+    expect(textboxes).toHaveLength(1);
+    expect(textboxes[0]).toHaveAttribute("id", "public-comment-input");
     expect(screen.queryByRole("button", { name: /submit/i })).not.toBeInTheDocument();
   });
 
