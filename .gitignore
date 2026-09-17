@@ -21,3 +21,5 @@ server/uploads/
 # logs & OS
 *.log
 .DS_Store
+# pre-migration safety dumps (Lab 3) — local only, never a deliverable
+/db-backups/

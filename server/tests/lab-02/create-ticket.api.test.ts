@@ -14,8 +14,8 @@ let relatedSystemId: number;
 
 beforeAll(async () => {
   const prisma = getPrisma();
-  const active = await prisma.requesterUser.findFirstOrThrow({ where: { isActive: true } });
-  const inactive = await prisma.requesterUser.findFirstOrThrow({ where: { isActive: false } });
+  const active = await prisma.user.findFirstOrThrow({ where: { isActive: true, role: "REQUESTER" } });
+  const inactive = await prisma.user.findFirstOrThrow({ where: { isActive: false, role: "REQUESTER" } });
   const category = await prisma.category.findFirstOrThrow({ where: { isActive: true } });
   const relatedSystem = await prisma.relatedSystem.findFirstOrThrow({ where: { isActive: true } });
   activeRequesterId = active.id;

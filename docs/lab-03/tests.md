@@ -38,27 +38,27 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
 | UNIT-01 | Unit | BR-22 | Status transition table lookup | Returns allowed next statuses for each of the 8 statuses; empty set for Cancelled | server/tests/lab-03/status-transitions.unit.test.ts | Pending |
-| UNIT-02 | Unit | BR-11 | Password rule validator | Rejects short/no-uppercase/no-digit/no-special-char passwords; accepts a compliant one | server/tests/lab-03/password-rules.unit.test.ts | Pending |
-| UNIT-03 | Unit | BR-06 | Password hashing helper | bcrypt hash differs from plaintext; verifies correctly against the original password | server/tests/lab-03/password-rules.unit.test.ts | Pending |
+| UNIT-02 | Unit | BR-11 | Password rule validator | Rejects short/no-uppercase/no-digit/no-special-char passwords; accepts a compliant one | server/tests/lab-03/password-rules.unit.test.ts | Pass |
+| UNIT-03 | Unit | BR-06 | Password hashing helper | bcrypt hash differs from plaintext; verifies correctly against the original password | server/tests/lab-03/password-rules.unit.test.ts | Pass |
 
 ### API — Authentication (`auth.api.test.ts`)
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| API-01 | API | AC-01 | Valid login | 200, sets cookie, returns identity + role | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-02 | API | AC-05 | Login with unknown email | 401, generic message | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-03 | API | AC-05 | Login with wrong password | 401, identical generic message to API-02 | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-04 | API | AC-06 | Login with inactive account, correct password | 401, identical generic message | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-05 | API | FR-01 | Missing email or password field | 400 | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-06 | API | FR-02 | GET /api/auth/me, valid session | 200, correct identity/role/mustChangePassword | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-07 | API | BR-14 | GET /api/auth/me, no session | 401 | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-08 | API | AC-07 | Logout then repeat prior protected request with old cookie | 401 | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-09 | API | AC-02, BR-02 | Any normal route while mustChangePassword=true | 403 PASSWORD_CHANGE_REQUIRED | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-10 | API | BR-02 | /api/auth/me, /change-password, /logout while mustChangePassword=true | All succeed (exempt routes) | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-11 | API | FR-05, BR-11 | Change password with a rule-violating new password | 400 | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-12 | API | BR-12 | Change password where new equals current | 400 | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-13 | API | FR-05 | Change password with wrong current password | 401 | server/tests/lab-03/auth.api.test.ts | Pending |
-| API-14 | API | AC-02, BR-13 | Change password success | 200, mustChangePassword cleared, normal routes now reachable | server/tests/lab-03/auth.api.test.ts | Pending |
+| API-01 | API | AC-01 | Valid login | 200, sets cookie, returns identity + role | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-02 | API | AC-05 | Login with unknown email | 401, generic message | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-03 | API | AC-05 | Login with wrong password | 401, identical generic message to API-02 | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-04 | API | AC-06 | Login with inactive account, correct password | 401, identical generic message | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-05 | API | FR-01 | Missing email or password field | 400 | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-06 | API | FR-02 | GET /api/auth/me, valid session | 200, correct identity/role/mustChangePassword | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-07 | API | BR-14 | GET /api/auth/me, no session | 401 | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-08 | API | AC-07 | Logout then repeat prior protected request with old cookie | 401 | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-09 | API | AC-02, BR-02 | Any normal route while mustChangePassword=true | 403 PASSWORD_CHANGE_REQUIRED | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-10 | API | BR-02 | /api/auth/me, /change-password, /logout while mustChangePassword=true | All succeed (exempt routes) | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-11 | API | FR-05, BR-11 | Change password with a rule-violating new password | 400 | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-12 | API | BR-12 | Change password where new equals current | 400 | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-13 | API | FR-05 | Change password with wrong current password | 401 | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-14 | API | AC-02, BR-13 | Change password success | 200, mustChangePassword cleared, normal routes now reachable | server/tests/lab-03/auth.api.test.ts | Pass |
 
 ### API — Authorization (`authorization.api.test.ts`)
 
@@ -81,13 +81,19 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| MIG-01 | Migration/Regression | AC-17 | A Ticket created under Lab 2 (pre-migration fixture) is fetched by its migrated owner post-migration | 200, same Ticket Number, content, Attachments | server/tests/lab-03/migration-regression.api.test.ts | Pending |
-| MIG-02 | Migration/Regression | BR-33 | Every pre-existing RequesterUser row exists as a User post-migration with the same id | Row counts and ids match before/after | server/tests/lab-03/migration-regression.api.test.ts | Pending |
-| MIG-03 | Migration/Regression | BR-34 | Every migrated User has role=REQUESTER, mustChangePassword=true, a valid bcrypt hash | All three true for every migrated row | server/tests/lab-03/migration-regression.api.test.ts | Pending |
+| MIG-01 | Migration/Regression | AC-17 | A Ticket created under Lab 2 (pre-migration fixture) is fetched by its migrated owner post-migration | 200, same Ticket Number, content, Attachments | server/tests/lab-03/migration-regression.api.test.ts | Pass |
+| MIG-02 | Migration/Regression | BR-33 | Every pre-existing RequesterUser row exists as a User post-migration with the same id | Row counts and ids match before/after | server/tests/lab-03/migration-regression.api.test.ts | Pass |
+| MIG-03 | Migration/Regression | BR-34 | Every migrated User has role=REQUESTER, mustChangePassword=true, a valid bcrypt hash | All three true for every migrated row | server/tests/lab-03/migration-regression.api.test.ts | Pass |
 | MIG-04 | Migration/Regression | BR-35 | Every pre-existing Ticket has itPriority = its requestedPriority after migration | Equal for every row | server/tests/lab-03/migration-regression.api.test.ts | Pending |
 | MIG-05 | Migration/Regression | BR-36 | X-Dev-Requester-Id header sent to any Lab 2 route post-migration | Ignored entirely; identity comes from the session only | server/tests/lab-03/migration-regression.api.test.ts | Pending |
 | MIG-06 | Regression | FR-08 | Full Lab 2 create/list/detail/attachment flow, authenticated | Identical behavior to Lab 2, now under a real session | server/tests/lab-03/create-ticket.api.test.ts (existing, migrated) | Pending |
 | MIG-07 | Regression | — | Full Lab 1 + Lab 2 suites | All still pass unmodified in behavior | server/tests/lab-01/*, server/tests/lab-02/* | Pending |
+| MIG-08 | Regression | — | An active IT Staff or Administrator id passed as X-Dev-Requester-Id (discovered during Issue 32, not pre-planned) | 400 — legacy header stays scoped to role=REQUESTER | server/tests/lab-03/migration-regression.api.test.ts | Pass |
+
+MIG-04 is deferred: `Ticket.itPriority` does not exist until Issue 36 adds it
+(specification.md §7 migration path, steps 5-7 belong to the Ticket workflow
+Issues, not Issue 32's User-only migration). MIG-05/06/07 depend on Issue 34
+removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 
 ### API — IT Staff Ticket Queue (`staff-queue.api.test.ts`)
 
@@ -225,3 +231,35 @@ cd client && npx tsc --noEmit
 
 _To be filled in as each Issue lands, with real pass/fail counts and any bugs found
 during manual verification — same discipline as Lab 2._
+
+### Issue 32 — Authentication foundation
+
+`cd server && npm test`: **67/67 passed** (11 files) — the 23 new Lab 3 tests
+(UNIT-02/03, API-01..14, MIG-01/02/03/08) plus all 44 pre-existing Lab 1/Lab 2
+server tests, unmodified in behavior. `cd client && npm test`: 31/31 passed,
+untouched by this Issue (backend-only scope). Both `npx tsc --noEmit` clean.
+
+Manual verification against the real dev server (`curl`, not just Supertest):
+login sets a cookie with `HttpOnly; SameSite=Lax; Max-Age=28800`; a fresh
+login's session blocks `GET /api/categories` with `403
+PASSWORD_CHANGE_REQUIRED`; `change-password` returns a **new** cookie with
+`mustChangePassword:false` baked in and the same old-cookie request now
+reaches `/api/categories` with `200`; `logout` clears the cookie and the same
+old cookie value is rejected with `401` on the next request — confirmed this
+is real revocation (an in-memory jti deny-list), not just a client-side
+cookie clear, since a stateless JWT would otherwise still verify until its
+8h expiry.
+
+Two real bugs found and fixed while implementing the migration (not
+pre-planned, both regression-tested — MIG-08 and the `/api/requesters` test
+in `requester-context.api.test.ts`):
+1. `requireActiveRequester` looked up the legacy `X-Dev-Requester-Id` id
+   without checking `role`. Post-migration the same table also holds IT
+   Staff/Administrator rows, so an active staff id would have been silently
+   accepted as a Requester.
+2. `GET /api/requesters` (the Lab 2 selector's data source) had the same
+   gap — it would have started listing IT Staff and Administrator accounts
+   in the selector dropdown.
+
+Both are fixed by scoping the relevant queries to `role: "REQUESTER"`
+(`src/requesterAuth.ts`, `src/app.ts`).
