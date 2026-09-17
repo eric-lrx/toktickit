@@ -6,6 +6,7 @@ import Shell from "./Shell.js";
 import CreateTicket from "./CreateTicket.js";
 import MyTickets from "./MyTickets.js";
 import RequesterTicketDetail from "./RequesterTicketDetail.js";
+import StaffTicketQueue from "./StaffTicketQueue.js";
 import { Role } from "./api.js";
 
 const ROLE_HOME: Record<Role, string> = {
@@ -71,8 +72,11 @@ function AuthenticatedApp() {
             <Route path="/tickets/:id" element={<RequesterTicketDetail />} />
           </>
         )}
-        {/* IT Staff Ticket Queue (/queue) and Administrator Users
-            (/admin/users) land in Issues 35 and 38. */}
+        {(user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") && (
+          <Route path="/queue" element={<StaffTicketQueue />} />
+        )}
+        {/* Ticket Detail for IT Staff (/queue/:id) and Administrator Users
+            (/admin/users) land in Issues 36 and 38. */}
       </Routes>
     </Shell>
   );

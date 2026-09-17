@@ -9,9 +9,24 @@ import { loginAs } from "./testAuth.js";
 // Not in the handout's minimum file list — added deliberately (tests.md §1)
 // because specification.md §5.2/§10 and the Issue 32 Definition of Done both
 // require the RequesterUser -> User migration to be proven correct, not just
-// eyeballed. MIG-04 (itPriority backfill) is out of scope here: that column
-// doesn't exist until Issue 36 adds it (specification.md §7 migration path,
-// steps 5-7 are scoped to the Ticket workflow Issues, not this one).
+// eyeballed.
+
+describe("MIG-04 — every pre-existing Ticket has itPriority backfilled from requestedPriority", () => {
+  it("matches requestedPriority for every Ticket that predates the Issue 35 migration", async () => {
+    // Excludes the seeded TKT-9999-* fixtures: those are deliberately
+    // created *after* the migration with a few itPriority values that
+    // differ from requestedPriority, simulating a realistic IT Staff
+    // adjustment (prisma/seed.ts) — a legitimate divergence, not a
+    // migration regression. Prisma's query builder can't compare two
+    // columns of the same row portably, so this counts mismatches
+    // directly in SQL.
+    const result = await getPrisma().$queryRaw<{ mismatched: bigint }[]>`
+      SELECT count(*) AS mismatched FROM "Ticket"
+      WHERE "itPriority" != "requestedPriority" AND "ticketNumber" NOT LIKE 'TKT-9999-%'
+    `;
+    expect(Number(result[0].mismatched)).toBe(0);
+  });
+});
 
 const SEEDED_REQUESTER_EMAILS = [
   "ada.lovelace@example.com",
