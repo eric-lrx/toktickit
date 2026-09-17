@@ -153,6 +153,12 @@ export interface Ticket {
   status: TicketStatus;
   createdAt: string;
   updatedAt: string;
+  // Issue 36 — present on every Ticket row since the Issue 35 migration;
+  // typed on the base interface because the Requester's own detail screen
+  // reads resolutionSummary/requesterResolutionIndicatedAt too (ui-spec.md
+  // §6), not just the IT Staff one.
+  resolutionSummary: string | null;
+  requesterResolutionIndicatedAt: string | null;
 }
 
 export interface TicketDetail extends Ticket {
@@ -449,4 +455,76 @@ export async function getStaffQueue(query: StaffQueueQuery): Promise<StaffQueueR
     throw new Error("Unable to load the ticket queue. Please try again.");
   }
   return res.json();
+}
+
+// Issue 36 — IT Staff Ticket Detail and workflow.
+export interface StaffTicketDetail extends StaffTicket {
+  categoryName: string;
+  attachments: Attachment[];
+  publicComments: unknown[];
+  internalNotes: unknown[];
+}
+
+async function readStaffError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.error?.message === "string") return body.error.message;
+  } catch {
+    // fall through to the generic fallback
+  }
+  return fallback;
+}
+
+export async function getStaffTicket(id: number): Promise<StaffTicketDetail> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/staff/tickets/${id}`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new Error("Unable to reach the server. Please try again.");
+  }
+  if (res.status === 403) throw new Error("You do not have access to this ticket.");
+  if (res.status === 404) throw new Error("Ticket not found.");
+  if (!res.ok) throw new Error("Unable to load ticket. Please try again.");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function setTicketOwner(id: number, ticketOwnerId: number | null): Promise<void> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/owner`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticketOwnerId }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update the ticket owner."));
+}
+
+export async function setTicketItPriority(id: number, itPriority: RequestedPriority): Promise<void> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/priority`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itPriority }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update IT Priority."));
+}
+
+export async function setTicketStatus(id: number, status: TicketStatus, resolutionSummary?: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/status`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, resolutionSummary }),
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update status."));
+}
+
+// Requester-only — BR-05: sets the signal, never the formal status.
+export async function indicateResolution(id: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/tickets/${id}/resolution-indicated`, {
+    method: "PATCH",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await readStaffError(res, "Unable to record your response. Please try again."));
 }

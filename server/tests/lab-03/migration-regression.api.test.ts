@@ -13,16 +13,19 @@ import { loginAs } from "./testAuth.js";
 
 describe("MIG-04 — every pre-existing Ticket has itPriority backfilled from requestedPriority", () => {
   it("matches requestedPriority for every Ticket that predates the Issue 35 migration", async () => {
-    // Excludes the seeded TKT-9999-* fixtures: those are deliberately
-    // created *after* the migration with a few itPriority values that
-    // differ from requestedPriority, simulating a realistic IT Staff
-    // adjustment (prisma/seed.ts) — a legitimate divergence, not a
-    // migration regression. Prisma's query builder can't compare two
-    // columns of the same row portably, so this counts mismatches
-    // directly in SQL.
+    // Excludes known test-fixture ticket numbers: TKT-9999-* (prisma/seed.ts)
+    // deliberately gives a few Tickets an IT-adjusted itPriority to simulate
+    // realistic history, and TKT-TEST-* (staff-ticket-detail.api.test.ts's
+    // STAFF-D-07) deliberately changes itPriority via the real PATCH route
+    // to prove requestedPriority stays untouched. Both are legitimate
+    // divergences created *after* the migration, not migration regressions.
+    // Prisma's query builder can't compare two columns of the same row
+    // portably, so this counts mismatches directly in SQL.
     const result = await getPrisma().$queryRaw<{ mismatched: bigint }[]>`
       SELECT count(*) AS mismatched FROM "Ticket"
-      WHERE "itPriority" != "requestedPriority" AND "ticketNumber" NOT LIKE 'TKT-9999-%'
+      WHERE "itPriority" != "requestedPriority"
+        AND "ticketNumber" NOT LIKE 'TKT-9999-%'
+        AND "ticketNumber" NOT LIKE 'TKT-TEST-%'
     `;
     expect(Number(result[0].mismatched)).toBe(0);
   });

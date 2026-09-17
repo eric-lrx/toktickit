@@ -70,6 +70,8 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
     });
     await screen.findByText(/TKT-2026-000001/);
@@ -89,6 +91,8 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
     });
     renderCreateTicket();
@@ -123,6 +127,8 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
     });
     renderCreateTicket();
@@ -147,6 +153,8 @@ describe("CreateTicket", () => {
       status: "NEW",
       createdAt: "",
       updatedAt: "",
+      resolutionSummary: null,
+      requesterResolutionIndicatedAt: null,
       attachments: [],
     });
     renderCreateTicket();

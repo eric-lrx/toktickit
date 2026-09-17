@@ -19,6 +19,7 @@ import {
   setSessionCookie,
   signSession,
 } from "./session.js";
+import { allowedTransitions, isAllowedTransition } from "./statusTransitions.js";
 
 // Issue 34 — every Requester route requires both a session (401 if absent)
 // and the REQUESTER role (403 for any other authenticated role); ownership
@@ -566,6 +567,10 @@ app.post("/api/auth/change-password", requireAuth, async (req: AuthedRequest, re
 // ---------------------------------------------------------------------------
 const STAFF_SORT_FIELDS = ["createdAt", "updatedAt", "itPriority", "ticketNumber"] as const;
 const requireStaffRead = [requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR")];
+// Issue 36 — Administrator is read-only on Tickets (specification.md §11's
+// authorization-matrix decision): claim/reassign/priority/status are
+// IT_STAFF-only, unlike the read routes above.
+const requireStaffWrite = [requireAuth, requireRole("IT_STAFF")];
 
 app.get("/api/staff/tickets", ...requireStaffRead, async (req: AuthedRequest, res: Response) => {
   const sort = (req.query.sort as string) ?? "updatedAt";
@@ -679,6 +684,179 @@ app.get("/api/staff/users", ...requireStaffRead, async (_req: Request, res: Resp
     res.status(200).json({ data: staffUsers });
   } catch {
     res.status(500).json({ error: { message: "Unable to load staff users" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Issue 36 — IT Staff Ticket Detail and workflow.
+// ---------------------------------------------------------------------------
+
+// publicComments/internalNotes are hardcoded empty until Issue 37 creates
+// those models — the response shape stays stable across both Issues, only
+// the contents change from always-empty to real queries.
+app.get("/api/staff/tickets/:id", ...requireStaffRead, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  try {
+    const ticket = await getPrisma().ticket.findUnique({
+      where: { id },
+      include: { ticketOwner: { select: { name: true } }, category: { select: { name: true } } },
+    });
+    if (!ticket) {
+      res.status(404).json({ error: { message: "Ticket not found" } });
+      return;
+    }
+    const attachments = await getPrisma().attachment.findMany({ where: { ticketId: id }, orderBy: { id: "asc" } });
+    const { ticketOwner, category, ...rest } = ticket;
+    res.status(200).json({
+      data: {
+        ...rest,
+        ticketOwnerName: ticketOwner?.name ?? null,
+        categoryName: category.name,
+        attachments,
+        publicComments: [],
+        internalNotes: [],
+      },
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load ticket" } });
+  }
+});
+
+// BR-19 (briefing) — the owner must be an active IT_STAFF/ADMINISTRATOR
+// user; Administrator itself cannot call this route (write, not read), but
+// CAN be the target of an assignment (an Admin picking up a ticket).
+app.patch("/api/staff/tickets/:id/owner", ...requireStaffWrite, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  const ticket = await getPrisma().ticket.findUnique({ where: { id } });
+  if (!ticket) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  const raw = req.body?.ticketOwnerId;
+  const ticketOwnerId = raw === null ? null : Number(raw);
+  if (ticketOwnerId !== null && !Number.isInteger(ticketOwnerId)) {
+    res.status(400).json({ error: { message: "ticketOwnerId must be an integer or null" } });
+    return;
+  }
+  if (ticketOwnerId !== null) {
+    const owner = await getPrisma().user.findUnique({ where: { id: ticketOwnerId } });
+    if (!owner || !owner.isActive || (owner.role !== "IT_STAFF" && owner.role !== "ADMINISTRATOR")) {
+      res.status(400).json({ error: { message: "ticketOwnerId must be an active IT Staff or Administrator user" } });
+      return;
+    }
+  }
+
+  try {
+    const updated = await getPrisma().ticket.update({
+      where: { id },
+      data: { ticketOwnerId },
+      include: { ticketOwner: { select: { name: true } } },
+    });
+    res.status(200).json({ data: { ticketOwnerId: updated.ticketOwnerId, ticketOwnerName: updated.ticketOwner?.name ?? null } });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to update the ticket owner" } });
+  }
+});
+
+app.patch("/api/staff/tickets/:id/priority", ...requireStaffWrite, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  const ticket = await getPrisma().ticket.findUnique({ where: { id } });
+  if (!ticket) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  if (!PRIORITIES.includes(req.body?.itPriority)) {
+    res.status(400).json({ error: { message: `invalid itPriority: '${req.body?.itPriority}'` } });
+    return;
+  }
+
+  try {
+    const updated = await getPrisma().ticket.update({
+      where: { id },
+      data: { itPriority: req.body.itPriority },
+    });
+    res.status(200).json({ data: { itPriority: updated.itPriority } });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to update IT Priority" } });
+  }
+});
+
+// BR-22/BR-23 (briefing) — the transition table is the sole source of
+// truth; a disallowed transition names the current state and every allowed
+// target so the caller (or its UI) can self-correct without guessing.
+app.patch("/api/staff/tickets/:id/status", ...requireStaffWrite, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  const ticket = await getPrisma().ticket.findUnique({ where: { id } });
+  if (!ticket) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  const targetStatus = req.body?.status;
+  if (!TICKET_STATUSES.includes(targetStatus)) {
+    res.status(400).json({ error: { message: `invalid status: '${targetStatus}'` } });
+    return;
+  }
+  if (!isAllowedTransition(ticket.status, targetStatus)) {
+    const allowed = allowedTransitions(ticket.status);
+    const message =
+      allowed.length === 0
+        ? `Cannot move from ${ticket.status}: no transitions are allowed (terminal state).`
+        : `Cannot move from ${ticket.status} to ${targetStatus}. Allowed: ${allowed.join(", ")}.`;
+    res.status(409).json({ error: { message } });
+    return;
+  }
+
+  const resolutionSummary = typeof req.body?.resolutionSummary === "string" ? req.body.resolutionSummary.trim() : undefined;
+  try {
+    const updated = await getPrisma().ticket.update({
+      where: { id },
+      data: { status: targetStatus, ...(resolutionSummary !== undefined ? { resolutionSummary } : {}) },
+    });
+    res.status(200).json({ data: { status: updated.status, resolutionSummary: updated.resolutionSummary } });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to update status" } });
+  }
+});
+
+// Requester-only — BR-05: sets the signal, never the formal status.
+app.patch("/api/tickets/:id/resolution-indicated", ...requireRequester, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  const ticket = await getPrisma().ticket.findUnique({ where: { id } });
+  if (!ticket || ticket.requesterId !== req.user!.id) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+
+  try {
+    const updated = await getPrisma().ticket.update({
+      where: { id },
+      data: { requesterResolutionIndicatedAt: new Date() },
+    });
+    res.status(200).json({ data: { requesterResolutionIndicatedAt: updated.requesterResolutionIndicatedAt } });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to record the resolution signal" } });
   }
 });
 

@@ -1,42 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Badge, { BadgeTone } from "./components/Badge.js";
+import Badge from "./components/Badge.js";
 import { getStaffQueue, RequestedPriority, StaffTicket, TicketStatus } from "./api.js";
+import { STATUS_LABELS, STATUSES, statusTone } from "./ticketStatus.js";
 
 type LoadState = "loading" | "loaded" | "forbidden" | "error";
 type SortField = "createdAt" | "updatedAt" | "itPriority" | "ticketNumber";
 
 const PAGE_SIZE = 10;
-const STATUSES: TicketStatus[] = [
-  "NEW",
-  "OPEN",
-  "IN_PROGRESS",
-  "WAITING_FOR_REQUESTER",
-  "RESOLVED",
-  "CLOSED",
-  "REOPENED",
-  "CANCELLED",
-];
-
-// ui-spec.md §8 — text is always the differentiator between statuses that
-// share a badge tone (In Progress vs Waiting for Requester), never color alone.
-const STATUS_LABELS: Record<TicketStatus, string> = {
-  NEW: "New",
-  OPEN: "Open",
-  IN_PROGRESS: "In Progress",
-  WAITING_FOR_REQUESTER: "Waiting for Requester",
-  RESOLVED: "Resolved",
-  CLOSED: "Closed",
-  REOPENED: "Reopened",
-  CANCELLED: "Cancelled",
-};
-
-export function statusTone(status: TicketStatus): BadgeTone {
-  if (status === "NEW" || status === "OPEN") return "pale";
-  if (status === "RESOLVED" || status === "CLOSED") return "success";
-  if (status === "CANCELLED") return "neutral";
-  return "warning"; // IN_PROGRESS, WAITING_FOR_REQUESTER, REOPENED
-}
 
 function priorityTone(priority: RequestedPriority): "pale" | "warning" | "danger" {
   if (priority === "HIGH") return "danger";
