@@ -170,8 +170,10 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   return fallback;
 }
 
-// Issue 8 — POST /api/tickets. requesterId goes in the header, never the body
-// (api-spec.md), since ownership always comes from X-Dev-Requester-Id.
+// Issue 34 — ownership comes from the session cookie, never a client-
+// supplied id (BR-03); every Requester-scoped call needs credentials:
+// "include" so the cookie actually crosses the Vite (5173) -> API (3000)
+// ports (specification.md §11), same as the auth calls above.
 // Issue 11 — optional attachments switch the request to multipart/form-data;
 // with none, it stays plain JSON (unchanged from Issue 8).
 //
@@ -179,11 +181,7 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 // detail goes to console.error only — the same leak (raw "Failed to fetch"
 // reaching the UI) was flagged on Lab 1's checkSystem() and is worth not
 // repeating here.
-export async function createTicket(
-  requesterId: number,
-  input: CreateTicketInput,
-  files: File[] = []
-): Promise<TicketDetail> {
+export async function createTicket(input: CreateTicketInput, files: File[] = []): Promise<TicketDetail> {
   let res: Response;
   try {
     if (files.length > 0) {
@@ -196,13 +194,14 @@ export async function createTicket(
       files.forEach((f) => formData.append("attachments", f));
       res = await fetch(`${API_URL}/api/tickets`, {
         method: "POST",
-        headers: { "X-Dev-Requester-Id": String(requesterId) },
+        credentials: "include",
         body: formData,
       });
     } else {
       res = await fetch(`${API_URL}/api/tickets`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Dev-Requester-Id": String(requesterId) },
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
     }
@@ -221,12 +220,10 @@ export async function createTicket(
 // Issue 10 — Requester Ticket Detail, read-only. 404 (owned or not found,
 // same response either way — BR-10) is treated as "Ticket not found" by the
 // caller; there's no separate "forbidden" case to distinguish.
-export async function getTicket(requesterId: number, id: number): Promise<TicketDetail> {
+export async function getTicket(id: number): Promise<TicketDetail> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/tickets/${id}`, {
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
-    });
+    res = await fetch(`${API_URL}/api/tickets/${id}`, { credentials: "include" });
   } catch (err) {
     console.error(err);
     throw new Error("Unable to reach the server. Please try again.");
@@ -243,7 +240,7 @@ export async function getTicket(requesterId: number, id: number): Promise<Ticket
 }
 
 // Issue 11 — Attachment lifecycle.
-export async function addAttachments(requesterId: number, ticketId: number, files: File[]): Promise<Attachment[]> {
+export async function addAttachments(ticketId: number, files: File[]): Promise<Attachment[]> {
   const formData = new FormData();
   files.forEach((f) => formData.append("attachments", f));
 
@@ -251,7 +248,7 @@ export async function addAttachments(requesterId: number, ticketId: number, file
   try {
     res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
       method: "POST",
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
+      credentials: "include",
       body: formData,
     });
   } catch (err) {
@@ -266,12 +263,13 @@ export async function addAttachments(requesterId: number, ticketId: number, file
   return json.data;
 }
 
-export async function removeAttachment(requesterId: number, attachmentId: number, reason: string): Promise<Attachment> {
+export async function removeAttachment(attachmentId: number, reason: string): Promise<Attachment> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json", "X-Dev-Requester-Id": String(requesterId) },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),
     });
   } catch (err) {
@@ -286,15 +284,12 @@ export async function removeAttachment(requesterId: number, attachmentId: number
   return json.data;
 }
 
-// Downloads via fetch + Blob (not a plain <a href>) because the download
-// route needs the same X-Dev-Requester-Id header as every other requester-
-// scoped route — a bare anchor click can't attach a custom header.
-export async function downloadAttachment(requesterId: number, attachmentId: number, filename: string): Promise<void> {
+// Downloads via fetch + Blob (not a plain <a href>) because a bare anchor
+// click can't send the session cookie's credentials:"include" itself.
+export async function downloadAttachment(attachmentId: number, filename: string): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
-    });
+    res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, { credentials: "include" });
   } catch (err) {
     console.error(err);
     throw new Error("Unable to reach the server. Please try again.");
@@ -314,7 +309,7 @@ export async function downloadAttachment(requesterId: number, attachmentId: numb
 }
 
 // Issue 9 — My Tickets: search, filter, sort, paginate the current
-// Requester's own Tickets (always server-scoped by X-Dev-Requester-Id, BR-11).
+// Requester's own Tickets (always server-scoped by the session, BR-11).
 export interface MyTicketsQuery {
   search?: string;
   categoryId?: number;
@@ -331,7 +326,7 @@ export interface MyTicketsResult {
   meta: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
-export async function getMyTickets(requesterId: number, query: MyTicketsQuery): Promise<MyTicketsResult> {
+export async function getMyTickets(query: MyTicketsQuery): Promise<MyTicketsResult> {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.categoryId !== undefined) params.set("categoryId", String(query.categoryId));
@@ -344,9 +339,7 @@ export async function getMyTickets(requesterId: number, query: MyTicketsQuery): 
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/tickets?${params.toString()}`, {
-      headers: { "X-Dev-Requester-Id": String(requesterId) },
-    });
+    res = await fetch(`${API_URL}/api/tickets?${params.toString()}`, { credentials: "include" });
   } catch (err) {
     console.error(err);
     throw new Error("Unable to reach the server. Please try again.");

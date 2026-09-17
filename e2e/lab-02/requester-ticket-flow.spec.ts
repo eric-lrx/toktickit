@@ -37,20 +37,24 @@ test("a Requester creates a Ticket with an attachment and finds it in My Tickets
   await expect(page.getByRole("table").getByText(ticketNumber!)).toBeVisible();
 });
 
-// E2E-02 (AC-18) — switching Requester hides the previous Requester's Tickets.
-test("switching Requester mid-session hides the previous Requester's Tickets", async ({ page }) => {
+// E2E-02 (AC-18) — logging in as a different Requester hides the previous
+// Requester's Tickets. Issue 34: there is no more in-app Requester switch —
+// this is now Logout, then Login as someone else, exactly how a real user
+// would change identity.
+test("logging in as a different Requester hides the previous Requester's Tickets", async ({ page }) => {
   await selectRequester(page, ADA);
 
   await clickNavLink(page, "Create Ticket");
   await page.getByLabel(/^category/i).selectOption({ label: "Software" });
   await page.getByLabel(/related system/i).selectOption({ label: "VPN" });
   await page.getByLabel(/^summary/i).fill("E2E: Ada-only ticket for isolation check");
-  await page.getByLabel(/^description/i).fill("This Ticket must not be visible once we switch to Requester B.");
+  await page.getByLabel(/^description/i).fill("This Ticket must not be visible once we log in as Requester B.");
   await page.getByRole("button", { name: /^submit$/i }).click();
   const adaTicketNumber = (await page.getByText(/TKT-\d{4}-\d{6}/).textContent())?.match(/TKT-\d{4}-\d{6}/)?.[0];
   expect(adaTicketNumber).toBeTruthy();
 
-  await page.getByRole("button", { name: /change requester/i }).click();
+  await page.getByRole("button", { name: /^logout$/i }).click();
+  await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
   await selectRequester(page, GRACE);
 
   await clickNavLink(page, "My Tickets");

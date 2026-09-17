@@ -6,10 +6,6 @@ import { addAttachments, Attachment, downloadAttachment, getTicket, removeAttach
 
 type LoadState = "loading" | "loaded" | "error";
 
-interface Props {
-  requesterId: number;
-}
-
 function priorityTone(priority: TicketDetail["requestedPriority"]): "pale" | "warning" | "danger" {
   if (priority === "HIGH") return "danger";
   if (priority === "MEDIUM") return "warning";
@@ -20,7 +16,7 @@ function priorityTone(priority: TicketDetail["requestedPriority"]): "pale" | "wa
 // Issue 11 — Attachment lifecycle: add, download, soft-remove with reason.
 // No Public Comments, Internal Notes, Actions Taken, or status controls —
 // those are explicitly out of scope for Lab 2 (specification.md §3).
-export default function RequesterTicketDetail({ requesterId }: Props) {
+export default function RequesterTicketDetail() {
   const { id } = useParams();
   const [state, setState] = useState<LoadState>("loading");
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
@@ -33,14 +29,14 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
   const [removalReason, setRemovalReason] = useState("");
 
   async function loadTicket() {
-    const t = await getTicket(requesterId, Number(id));
+    const t = await getTicket(Number(id));
     setTicket(t);
   }
 
   useEffect(() => {
     let cancelled = false;
     setState("loading");
-    getTicket(requesterId, Number(id))
+    getTicket(Number(id))
       .then((t) => {
         if (cancelled) return;
         setTicket(t);
@@ -54,14 +50,14 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [requesterId, id]);
+  }, [id]);
 
   async function handleUpload() {
     if (stagedFiles.length === 0) return;
     setUploading(true);
     setAttachmentError("");
     try {
-      await addAttachments(requesterId, Number(id), stagedFiles);
+      await addAttachments(Number(id), stagedFiles);
       setStagedFiles([]);
       await loadTicket();
     } catch (err) {
@@ -73,7 +69,7 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
 
   function handleDownload(attachment: Attachment) {
     setAttachmentError("");
-    downloadAttachment(requesterId, attachment.id, attachment.originalName).catch((err) => {
+    downloadAttachment(attachment.id, attachment.originalName).catch((err) => {
       setAttachmentError(err instanceof Error ? err.message : "Unable to download attachment.");
     });
   }
@@ -87,7 +83,7 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
   async function confirmRemove() {
     if (pendingRemoveId === null || !removalReason.trim()) return;
     try {
-      await removeAttachment(requesterId, pendingRemoveId, removalReason.trim());
+      await removeAttachment(pendingRemoveId, removalReason.trim());
       setPendingRemoveId(null);
       setRemovalReason("");
       await loadTicket();

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
+import { loginAs } from "./testAuth.js";
 
 // Requires the DB to be migrated and seeded first (npx prisma migrate dev && npm run prisma:seed).
 //
@@ -51,8 +52,9 @@ describe("MIG-02/MIG-03 — every pre-existing Requester survived the User renam
   });
 });
 
-describe("MIG-01 — a Ticket owned by a migrated Requester is still reachable", () => {
+describe("MIG-01/MIG-06 — a Ticket owned by a migrated Requester is still reachable, now under real auth", () => {
   let requesterId: number;
+  let cookie: string;
   let categoryId: number;
   let relatedSystemId: number;
 
@@ -66,12 +68,13 @@ describe("MIG-01 — a Ticket owned by a migrated Requester is still reachable",
     requesterId = requester.id;
     categoryId = category.id;
     relatedSystemId = relatedSystem.id;
+    cookie = await loginAs(requester.email);
   });
 
-  it("creates and re-fetches a Ticket by the same migrated owner id, content and attachments intact", async () => {
+  it("creates and re-fetches a Ticket by the same migrated owner, content and attachments intact", async () => {
     const create = await request(app)
       .post("/api/tickets")
-      .set("X-Dev-Requester-Id", String(requesterId))
+      .set("Cookie", cookie)
       .field("categoryId", String(categoryId))
       .field("relatedSystemId", String(relatedSystemId))
       .field("summary", "Migration regression fixture ticket")
@@ -82,7 +85,7 @@ describe("MIG-01 — a Ticket owned by a migrated Requester is still reachable",
     const ticketId = create.body.data.id;
     const ticketNumber = create.body.data.ticketNumber;
 
-    const fetched = await request(app).get(`/api/tickets/${ticketId}`).set("X-Dev-Requester-Id", String(requesterId));
+    const fetched = await request(app).get(`/api/tickets/${ticketId}`).set("Cookie", cookie);
     expect(fetched.status).toBe(200);
     expect(fetched.body.data.ticketNumber).toBe(ticketNumber);
     expect(fetched.body.data.requesterId).toBe(requesterId);
@@ -91,26 +94,38 @@ describe("MIG-01 — a Ticket owned by a migrated Requester is still reachable",
   });
 });
 
-describe("Regression — the legacy header must not accept a non-Requester id post-migration", () => {
-  // Discovered while implementing Issue 32: once RequesterUser became User,
-  // the same table also holds IT Staff and Administrator rows. Without the
-  // role check added to requireActiveRequester (src/requesterAuth.ts), an IT
-  // Staff or Administrator id sent as X-Dev-Requester-Id would pass (the row
-  // exists and is active) and let that person's numeric id create/see
-  // Tickets as if they were a Requester.
-  it("rejects an active IT Staff id passed as X-Dev-Requester-Id", async () => {
-    const staff = await getPrisma().user.findFirstOrThrow({
-      where: { role: "IT_STAFF", isActive: true },
-    });
-    const res = await request(app).get("/api/tickets").set("X-Dev-Requester-Id", String(staff.id));
-    expect(res.status).toBe(400);
+describe("MIG-05 — X-Dev-Requester-Id is fully removed, not merely revalidated", () => {
+  // Issue 32 (still active header) fixed a narrower gap: the header
+  // accepted any active User id regardless of role. Issue 34 removes the
+  // header mechanism from every route entirely (specification.md §7 step
+  // 9) — so it must now be silently ignored, full stop. A request that only
+  // carries the header (no session cookie) must fail with 401 (no session),
+  // never with the old header-validation 400, and never succeed.
+  it("ignores the header entirely — a Requester id via header alone is 401, not treated as identity", async () => {
+    const requester = await getPrisma().user.findFirstOrThrow({ where: { role: "REQUESTER", isActive: true } });
+    const res = await request(app).get("/api/tickets").set("X-Dev-Requester-Id", String(requester.id));
+    expect(res.status).toBe(401);
   });
 
-  it("rejects an active Administrator id passed as X-Dev-Requester-Id", async () => {
-    const admin = await getPrisma().user.findFirstOrThrow({
-      where: { role: "ADMINISTRATOR", isActive: true },
+  it("ignores the header even for IT Staff/Administrator ids — still 401, not 400", async () => {
+    const staff = await getPrisma().user.findFirstOrThrow({ where: { role: "IT_STAFF", isActive: true } });
+    const res = await request(app).get("/api/tickets").set("X-Dev-Requester-Id", String(staff.id));
+    expect(res.status).toBe(401);
+  });
+
+  it("a real session works normally even when an (ignored) X-Dev-Requester-Id header is also present", async () => {
+    const requester = await getPrisma().user.findFirstOrThrow({ where: { role: "REQUESTER", isActive: true } });
+    const otherRequester = await getPrisma().user.findFirstOrThrow({
+      where: { role: "REQUESTER", isActive: true, id: { not: requester.id } },
     });
-    const res = await request(app).get("/api/tickets").set("X-Dev-Requester-Id", String(admin.id));
-    expect(res.status).toBe(400);
+    const cookie = await loginAs(requester.email);
+    // The header claims a DIFFERENT Requester's id — if it were honored at
+    // all, this would return someone else's Tickets.
+    const res = await request(app)
+      .get("/api/tickets")
+      .set("Cookie", cookie)
+      .set("X-Dev-Requester-Id", String(otherRequester.id));
+    expect(res.status).toBe(200);
+    expect(res.body.data.every((t: { requesterId: number }) => t.requesterId === requester.id)).toBe(true);
   });
 });

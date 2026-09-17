@@ -66,9 +66,9 @@ function AuthenticatedApp() {
         <Route path="/" element={<Navigate to={ROLE_HOME[user.role]} replace />} />
         {user.role === "REQUESTER" && (
           <>
-            <Route path="/tickets" element={<MyTickets requesterId={user.id} />} />
-            <Route path="/tickets/new" element={<CreateTicket requesterId={user.id} />} />
-            <Route path="/tickets/:id" element={<RequesterTicketDetail requesterId={user.id} />} />
+            <Route path="/tickets" element={<MyTickets />} />
+            <Route path="/tickets/new" element={<CreateTicket />} />
+            <Route path="/tickets/:id" element={<RequesterTicketDetail />} />
           </>
         )}
         {/* IT Staff Ticket Queue (/queue) and Administrator Users

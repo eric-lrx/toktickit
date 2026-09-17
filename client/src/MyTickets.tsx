@@ -8,10 +8,6 @@ type SortField = "createdAt" | "ticketNumber" | "summary";
 
 const PAGE_SIZE = 10;
 
-interface Props {
-  requesterId: number;
-}
-
 function priorityTone(priority: RequestedPriority): "pale" | "warning" | "danger" {
   if (priority === "HIGH") return "danger";
   if (priority === "MEDIUM") return "warning";
@@ -20,7 +16,7 @@ function priorityTone(priority: RequestedPriority): "pale" | "warning" | "danger
 
 // Issue 9 — My Tickets: search/filter/sort/pagination over the current
 // Requester's own Tickets, desktop table + mobile cards (ui-spec.md §4.4).
-export default function MyTickets({ requesterId }: Props) {
+export default function MyTickets() {
   const [state, setState] = useState<LoadState>("loading");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [total, setTotal] = useState(0);
@@ -35,12 +31,12 @@ export default function MyTickets({ requesterId }: Props) {
 
   useEffect(() => {
     setPage(1);
-  }, [search, priority, requesterId]);
+  }, [search, priority]);
 
   useEffect(() => {
     let cancelled = false;
     setState("loading");
-    getMyTickets(requesterId, {
+    getMyTickets({
       search: search.trim() || undefined,
       requestedPriority: priority || undefined,
       sort,
@@ -61,7 +57,7 @@ export default function MyTickets({ requesterId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [requesterId, search, priority, sort, order, page]);
+  }, [search, priority, sort, order, page]);
 
   function clearFilters() {
     setSearch("");
