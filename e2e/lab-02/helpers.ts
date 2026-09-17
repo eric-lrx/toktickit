@@ -3,12 +3,53 @@ import { Page } from "@playwright/test";
 export const ADA = "Ada Lovelace — ada.lovelace@example.com";
 export const GRACE = "Grace Hopper — grace.hopper@example.com";
 
+const EMAIL_BY_LABEL: Record<string, string> = {
+  [ADA]: "ada.lovelace@example.com",
+  [GRACE]: "grace.hopper@example.com",
+};
+
+// Backend runs on a different origin/port than the app under test
+// (baseURL is the Vite dev server) — same convention as client/src/api.ts's
+// own API_URL, no Vite proxy exists for /api.
+const API_URL = "http://localhost:3000";
+// Matches server/tests/lab-03/testAuth.ts — the two passwords a seeded
+// Requester account can plausibly currently have.
+const SEED_PASSWORD = "ChangeMe123!";
+const FIXED_PASSWORD = "TestSuiteFixed1!";
+
+// Issue 34 — the Development Requester selector is gone (Issue 33); this
+// now logs the given Requester in for real via page.request (which shares
+// its cookie jar with `page`, so the resulting session cookie is already
+// present when the test navigates), completing the mandatory
+// change-password step if needed. Tries the fixed test password first
+// (the likely current state after any recent server test run against the
+// same dev database), falling back to the documented seed password for a
+// freshly reseeded database.
 export async function selectRequester(page: Page, label: string) {
+  const email = EMAIL_BY_LABEL[label];
+  if (!email) throw new Error(`selectRequester: unknown label "${label}"`);
+
+  let currentPassword = FIXED_PASSWORD;
+  let res = await page.request.post(`${API_URL}/api/auth/login`, { data: { email, password: currentPassword } });
+  if (!res.ok()) {
+    currentPassword = SEED_PASSWORD;
+    res = await page.request.post(`${API_URL}/api/auth/login`, { data: { email, password: currentPassword } });
+  }
+  if (!res.ok()) {
+    throw new Error(`selectRequester: could not log in as ${email} with either known password`);
+  }
+
+  const body = await res.json();
+  if (body.data.mustChangePassword) {
+    const changed = await page.request.post(`${API_URL}/api/auth/change-password`, {
+      data: { currentPassword, newPassword: FIXED_PASSWORD },
+    });
+    if (!changed.ok()) {
+      throw new Error(`selectRequester: mandatory change-password failed for ${email}`);
+    }
+  }
+
   await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await page.goto("/");
-  await page.getByLabel(/development requester/i).selectOption({ label });
-  await page.getByRole("button", { name: /continue/i }).click();
 }
 
 // "Create Ticket" appears twice on My Tickets (nav link + toolbar CTA button) —

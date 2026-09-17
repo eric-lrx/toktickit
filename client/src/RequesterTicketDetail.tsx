@@ -2,13 +2,20 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
 import AttachmentSection from "./components/AttachmentSection.js";
-import { addAttachments, Attachment, downloadAttachment, getTicket, removeAttachment, TicketDetail } from "./api.js";
+import CommentPanel from "./components/CommentPanel.js";
+import {
+  addAttachments,
+  Attachment,
+  downloadAttachment,
+  getTicket,
+  indicateResolution,
+  postComment,
+  removeAttachment,
+  TicketDetail,
+} from "./api.js";
+import { STATUS_LABELS, statusTone } from "./ticketStatus.js";
 
 type LoadState = "loading" | "loaded" | "error";
-
-interface Props {
-  requesterId: number;
-}
 
 function priorityTone(priority: TicketDetail["requestedPriority"]): "pale" | "warning" | "danger" {
   if (priority === "HIGH") return "danger";
@@ -18,9 +25,10 @@ function priorityTone(priority: TicketDetail["requestedPriority"]): "pale" | "wa
 
 // Issue 10 — Requester Ticket Detail: read-only Ticket info (ui-spec.md §4.5).
 // Issue 11 — Attachment lifecycle: add, download, soft-remove with reason.
-// No Public Comments, Internal Notes, Actions Taken, or status controls —
-// those are explicitly out of scope for Lab 2 (specification.md §3).
-export default function RequesterTicketDetail({ requesterId }: Props) {
+// Issue 37 — Public Comments (own ticket only). Internal Notes never render
+// here at all — there is no route a Requester session can reach that returns
+// them (BR-16/ui-spec.md §5), so there is nothing to conditionally hide.
+export default function RequesterTicketDetail() {
   const { id } = useParams();
   const [state, setState] = useState<LoadState>("loading");
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
@@ -31,16 +39,18 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
   const [attachmentError, setAttachmentError] = useState("");
   const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null);
   const [removalReason, setRemovalReason] = useState("");
+  const [resolutionState, setResolutionState] = useState<"idle" | "sending" | "sent">("idle");
+  const [resolutionError, setResolutionError] = useState("");
 
   async function loadTicket() {
-    const t = await getTicket(requesterId, Number(id));
+    const t = await getTicket(Number(id));
     setTicket(t);
   }
 
   useEffect(() => {
     let cancelled = false;
     setState("loading");
-    getTicket(requesterId, Number(id))
+    getTicket(Number(id))
       .then((t) => {
         if (cancelled) return;
         setTicket(t);
@@ -54,14 +64,14 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [requesterId, id]);
+  }, [id]);
 
   async function handleUpload() {
     if (stagedFiles.length === 0) return;
     setUploading(true);
     setAttachmentError("");
     try {
-      await addAttachments(requesterId, Number(id), stagedFiles);
+      await addAttachments(Number(id), stagedFiles);
       setStagedFiles([]);
       await loadTicket();
     } catch (err) {
@@ -73,7 +83,7 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
 
   function handleDownload(attachment: Attachment) {
     setAttachmentError("");
-    downloadAttachment(requesterId, attachment.id, attachment.originalName).catch((err) => {
+    downloadAttachment(attachment.id, attachment.originalName).catch((err) => {
       setAttachmentError(err instanceof Error ? err.message : "Unable to download attachment.");
     });
   }
@@ -84,10 +94,24 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
     setAttachmentError("");
   }
 
+  async function handleIndicateResolution() {
+    if (!id) return;
+    setResolutionState("sending");
+    setResolutionError("");
+    try {
+      await indicateResolution(Number(id));
+      setResolutionState("sent");
+      await loadTicket();
+    } catch (err) {
+      setResolutionError(err instanceof Error ? err.message : "Unable to record your response.");
+      setResolutionState("idle");
+    }
+  }
+
   async function confirmRemove() {
     if (pendingRemoveId === null || !removalReason.trim()) return;
     try {
-      await removeAttachment(requesterId, pendingRemoveId, removalReason.trim());
+      await removeAttachment(pendingRemoveId, removalReason.trim());
       setPendingRemoveId(null);
       setRemovalReason("");
       await loadTicket();
@@ -116,7 +140,7 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
       >
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <h2 className="h5 mb-0">{ticket.ticketNumber}</h2>
-          <Badge tone="pale">{ticket.status}</Badge>
+          <Badge tone={statusTone(ticket.status)}>{STATUS_LABELS[ticket.status]}</Badge>
         </div>
         <small className="text-muted">
           Created {new Date(ticket.createdAt).toLocaleString()} · Updated{" "}
@@ -124,12 +148,42 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
         </small>
       </div>
 
-      <div className="row mb-4">
+      <div className="row mb-4 align-items-start">
         <div className="col-sm-4">
           <p className="small fw-semibold mb-1">Requested Priority</p>
           <Badge tone={priorityTone(ticket.requestedPriority)}>{ticket.requestedPriority}</Badge>
         </div>
+        <div className="col-sm-8">
+          {ticket.requesterResolutionIndicatedAt || resolutionState === "sent" ? (
+            <p className="mb-0" style={{ color: "var(--zg-secondary)" }}>
+              Thanks — IT Staff will confirm and close this ticket.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={handleIndicateResolution}
+              disabled={resolutionState === "sending"}
+            >
+              {resolutionState === "sending" ? "Sending…" : "Mark problem as resolved"}
+            </button>
+          )}
+          {resolutionError && (
+            <p role="alert" style={{ color: "var(--zg-error)" }} className="small mt-1 mb-0">
+              {resolutionError}
+            </p>
+          )}
+        </div>
       </div>
+
+      {ticket.resolutionSummary && (
+        <div className="mb-4">
+          <p className="small fw-semibold mb-1">Resolution Summary</p>
+          <p style={{ background: "var(--zg-readonly-bg)", whiteSpace: "pre-wrap" }} className="p-2 rounded">
+            {ticket.resolutionSummary}
+          </p>
+        </div>
+      )}
 
       <div className="mb-4">
         <p className="small fw-semibold mb-1">Summary</p>
@@ -203,6 +257,19 @@ export default function RequesterTicketDetail({ requesterId }: Props) {
             </div>
           </div>
         )}
+      </div>
+
+      <hr />
+
+      <div className="mb-4">
+        <CommentPanel
+          variant="public"
+          entries={ticket.publicComments}
+          onPost={async (content) => {
+            await postComment(ticket.id, content);
+            await loadTicket();
+          }}
+        />
       </div>
     </div>
   );
