@@ -41,33 +41,37 @@ describe("UserManagement", () => {
   it("UI-17 renders Name, Email, Role, Status, and an Edit action for every user", async () => {
     renderScreen();
 
-    expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.getByText("ada.lovelace@example.com")).toBeInTheDocument();
+    // Desktop table and mobile cards both exist in the DOM (CSS toggles
+    // which is visible, matching StaffTicketQueue's own responsive split),
+    // so an unscoped single-match query is ambiguous — assert presence via
+    // getAllBy*, and scope the Edit-button count to the table specifically.
+    expect((await screen.findAllByText("Ada Lovelace")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ada.lovelace@example.com").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/requester/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/active/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /edit/i }).length).toBe(SAMPLE_USERS.length);
+    expect(within(screen.getByRole("table")).getAllByRole("button", { name: /edit/i }).length).toBe(SAMPLE_USERS.length);
   });
 
   it("UI-18 filters the rendered list by search and by role", async () => {
     renderScreen();
-    await screen.findByText("Ada Lovelace");
+    await screen.findAllByText("Ada Lovelace");
 
     const searchSpy = vi.spyOn(api, "getAdminUsers").mockResolvedValue([SAMPLE_USERS[0]]);
     await userEvent.type(screen.getByLabelText(/search/i), "ada");
     await waitFor(() => expect(searchSpy).toHaveBeenCalledWith(expect.objectContaining({ search: "ada" })));
-    expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
+    expect((await screen.findAllByText("Ada Lovelace")).length).toBeGreaterThan(0);
     expect(screen.queryByText("Margaret Hamilton")).not.toBeInTheDocument();
 
     const roleSpy = vi.spyOn(api, "getAdminUsers").mockResolvedValue([SAMPLE_USERS[1]]);
     await userEvent.clear(screen.getByLabelText(/search/i));
     await userEvent.selectOptions(screen.getByLabelText(/role/i), "IT_STAFF");
     await waitFor(() => expect(roleSpy).toHaveBeenCalledWith(expect.objectContaining({ role: "IT_STAFF" })));
-    expect(await screen.findByText("Margaret Hamilton")).toBeInTheDocument();
+    expect((await screen.findAllByText("Margaret Hamilton")).length).toBeGreaterThan(0);
   });
 
   it("UI-19 shows a field-level error on a mocked 409 duplicate email when creating a user", async () => {
     renderScreen();
-    await screen.findByText("Ada Lovelace");
+    await screen.findAllByText("Ada Lovelace");
 
     await userEvent.click(screen.getByRole("button", { name: /create user/i }));
     const panel = within(await screen.findByRole("dialog"));
@@ -84,9 +88,11 @@ describe("UserManagement", () => {
 
   it("UI-20 disables Deactivate with an explanatory tooltip when editing your own account", async () => {
     renderScreen();
-    await screen.findByText("Fixture Admin");
+    await screen.findAllByText("Fixture Admin");
 
-    const editButtons = screen.getAllByRole("button", { name: /edit/i });
+    // Scoped to the table specifically — the mobile cards render the same
+    // users in the same order, but scoping avoids relying on that.
+    const editButtons = within(screen.getByRole("table")).getAllByRole("button", { name: /edit/i });
     // SAMPLE_USERS[2] (index 2) is the current admin themselves.
     await userEvent.click(editButtons[2]);
 
@@ -97,9 +103,9 @@ describe("UserManagement", () => {
 
   it("does not disable Deactivate when editing a different user", async () => {
     renderScreen();
-    await screen.findByText("Ada Lovelace");
+    await screen.findAllByText("Ada Lovelace");
 
-    const editButtons = screen.getAllByRole("button", { name: /edit/i });
+    const editButtons = within(screen.getByRole("table")).getAllByRole("button", { name: /edit/i });
     await userEvent.click(editButtons[0]);
 
     const deactivateButton = await screen.findByRole("button", { name: /deactivate user/i });

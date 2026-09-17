@@ -132,44 +132,87 @@ export default function UserManagement() {
       {state === "loaded" && users.length === 0 && <p className="text-muted text-center py-5">No users match.</p>}
 
       {state === "loaded" && users.length > 0 && (
-        // ui-spec.md §9 — no horizontal scroll on the page itself on mobile;
-        // table-responsive contains that scroll to the table alone.
-        <div className="table-responsive">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>
-                    <Badge tone={ROLE_TONE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
-                  </td>
-                  <td>
-                    <Badge tone={u.isActive ? "success" : "neutral"}>{u.isActive ? "Active" : "Inactive"}</Badge>
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => setPanel({ mode: "edit", user: u })}
-                    >
-                      Edit
-                    </button>
-                  </td>
+        <>
+          {/* ui-spec.md §9 — no horizontal scroll on mobile; below md, the
+              table gives way to cards entirely (same split as
+              StaffTicketQueue.tsx) rather than relying on a scrollable
+              table, which left Role/Status/Edit unreachable without first
+              discovering the gesture. */}
+          <div className="d-none d-md-block table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td>{u.name}</td>
+                    <td>
+                      <span
+                        title={u.email}
+                        style={{
+                          display: "inline-block",
+                          maxWidth: 150,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          verticalAlign: "bottom",
+                        }}
+                      >
+                        {u.email}
+                      </span>
+                    </td>
+                    <td>
+                      <Badge tone={ROLE_TONE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
+                    </td>
+                    <td>
+                      <Badge tone={u.isActive ? "success" : "neutral"}>{u.isActive ? "Active" : "Inactive"}</Badge>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => setPanel({ mode: "edit", user: u })}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="d-md-none d-flex flex-column gap-2">
+            {users.map((u) => (
+              <div key={u.id} className="p-3 rounded" style={{ background: "var(--zg-surface)", border: "1px solid var(--zg-surface-border)" }}>
+                <div className="d-flex justify-content-between align-items-start gap-2">
+                  <div>
+                    <strong>{u.name}</strong>
+                    <p className="mb-0 small text-muted">{u.email}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary flex-shrink-0"
+                    onClick={() => setPanel({ mode: "edit", user: u })}
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="d-flex gap-1 mt-2">
+                  <Badge tone={ROLE_TONE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
+                  <Badge tone={u.isActive ? "success" : "neutral"}>{u.isActive ? "Active" : "Inactive"}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {panel && (

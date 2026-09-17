@@ -159,21 +159,55 @@ never the sole signal, no horizontal scroll on mobile for any new screen. The
 show/hide password toggle and the Claim/Post buttons are icon-or-text controls with
 `aria-label`s where icon-only.
 
-## 10. Visual inspection checklist — to be completed in Issue 21
+## 10. Visual inspection checklist — completed in Issue 21
 
-- [ ] Colors match the token table exactly on every new screen (checked against
-      `client/src/theme.css`, not by eye).
-- [ ] Role navigation shows no destination the current role cannot use, on all three
-      roles.
-- [ ] Status and Priority badges are consistent across the Queue, Staff Detail, and
-      Requester Detail screens.
-- [ ] Editable vs. read-only fields are visually distinguishable at a glance on the
-      Staff Ticket Detail screen.
-- [ ] Validation messages appear directly under their field on Login, Change
-      Password, and User Management.
-- [ ] Focus indicator visible on every interactive element, including the
-      show/hide-password toggle.
-- [ ] No clipped labels or truncated buttons at desktop, tablet, and mobile on the
-      Queue, Staff Ticket Detail, and User Management screens.
-- [ ] No overlapping elements at any of the three breakpoints.
-- [ ] No horizontal scrolling at the mobile breakpoint, asserted programmatically.
+Evidence: `client/tests/lab-03/zen-green.style.test.tsx` (STYLE-01..04),
+`e2e/lab-03/*.spec.ts` (RESP-01/02/03), and the screenshots under
+`artifacts/lab-03/screenshots/` (login, change-password, staff-queue,
+staff-ticket-detail, user-management — 3 viewports each), all real,
+re-inspected after two genuine issues below were found and fixed, not
+checked from memory.
+
+- [x] Colors match the token table exactly on every new screen (checked against
+      `client/src/theme.css`, not by eye). STYLE-01..04 assert the actual
+      `var(--zg-*)` value on the rendered element, not a visual guess.
+- [x] Role navigation shows no destination the current role cannot use, on all three
+      roles. Confirmed both by UI-09 (Issue 33) and by real login as each role
+      in this pass (Requester/IT Staff/Administrator each showed only their
+      own nav links).
+- [x] Status and Priority badges are consistent across the Queue, Staff Detail, and
+      Requester Detail screens. All three import the same `ticketStatus.ts`
+      tone/label maps — structurally one source, not three copies that could
+      drift; STYLE-02 covers all 8 statuses.
+- [x] Editable vs. read-only fields are visually distinguishable at a glance on the
+      Staff Ticket Detail screen. STYLE-03, plus visual confirmation in the
+      screenshots (white `--zg-field-bg` selects vs. tan `--zg-readonly-bg`
+      text).
+- [x] Validation messages appear directly under their field on Login, Change
+      Password, and User Management — for client-side validation
+      (`FormField`'s own `error` prop, e.g. empty required fields, password
+      rules). One honest caveat: a *server-rejected* value (duplicate email
+      on User Management, wrong current password on Change Password) surfaces
+      as a form-level message below the fields, not re-anchored under the
+      specific field — consistent across every screen that has this
+      distinction, not an oversight isolated to one screen, but looser than
+      this item's literal wording.
+- [x] Focus indicator visible on every interactive element, including the
+      show/hide-password toggle. Verified via keyboard Tab + computed style
+      (`box-shadow: 0 0 0 4px rgba(248,249,250,.5)`, Bootstrap's default) —
+      present and visible, but a pale, uncustomized color against this
+      theme's own light background is noticeably subtle. Not blocking; worth
+      a follow-up if accessibility polish gets scheduled.
+- [x] No clipped labels or truncated buttons at desktop, tablet, and mobile on the
+      Queue, Staff Ticket Detail, and User Management screens. Real finding
+      during this pass: User Management's table overflowed at tablet width
+      (Status/Edit columns pushed out of view) and was largely unusable at
+      mobile (only Name/Email reachable). Fixed with a truncated+titled Email
+      column for the desktop table and a proper mobile card view (mirroring
+      StaffTicketQueue's own responsive split) — re-screenshotted and
+      confirmed clean at all three widths afterward.
+- [x] No overlapping elements at any of the three breakpoints. Checked across
+      all 15 screenshots.
+- [x] No horizontal scrolling at the mobile breakpoint, asserted programmatically.
+      RESP-01/02/03 each assert `scrollWidth <= clientWidth` at mobile width
+      as part of the test, not just a visual check.

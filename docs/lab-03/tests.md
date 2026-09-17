@@ -209,25 +209,25 @@ removing `X-Dev-Requester-Id` entirely and are still Pending until then.
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| STYLE-01 | UI Style | ui-spec.md §8 | Role badge classes | Correct class per role, text label always present | client/tests/lab-03/zen-green.style.test.tsx | Pending |
-| STYLE-02 | UI Style | ui-spec.md §8 | Status badge classes across all 8 statuses | Each status maps to its documented class/label | client/tests/lab-03/zen-green.style.test.tsx | Pending |
-| STYLE-03 | UI Style | ui-spec.md §3 | Editable vs read-only field classes on Staff Ticket Detail | Matches `--zg-field-bg` / `--zg-readonly-bg` convention | client/tests/lab-03/zen-green.style.test.tsx | Pending |
-| STYLE-04 | UI Style | ui-spec.md §5 | Internal Notes panel carries its distinct background/label | Class/label present, differs from Public Comments panel | client/tests/lab-03/zen-green.style.test.tsx | Pending |
+| STYLE-01 | UI Style | ui-spec.md §8 | Role badge classes | Correct class per role, text label always present | client/tests/lab-03/zen-green.style.test.tsx | Pass |
+| STYLE-02 | UI Style | ui-spec.md §8 | Status badge classes across all 8 statuses | Each status maps to its documented class/label | client/tests/lab-03/zen-green.style.test.tsx | Pass |
+| STYLE-03 | UI Style | ui-spec.md §3 | Editable vs read-only field classes on Staff Ticket Detail | Matches `--zg-field-bg` / `--zg-readonly-bg` convention | client/tests/lab-03/zen-green.style.test.tsx | Pass |
+| STYLE-04 | UI Style | ui-spec.md §5 | Internal Notes panel carries its distinct background/label | Class/label present, differs from Public Comments panel | client/tests/lab-03/zen-green.style.test.tsx | Pass |
 
 ### Responsive and E2E
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| RESP-01 | Responsive | ui-spec.md §4 | Queue at desktop/tablet/mobile | Table → reduced table → cards; no horizontal scroll | e2e/lab-03/staff-ticket-flow.spec.ts | Pending |
-| RESP-02 | Responsive | ui-spec.md §7 | User Management at 3 breakpoints | Usable, no clipping/overlap | e2e/lab-03/user-administration.spec.ts | Pending |
-| RESP-03 | Responsive | ui-spec.md §2-3 | Login/Change Password at mobile width | No horizontal scroll, buttons touch-sized | e2e/lab-03/authentication.spec.ts | Pending |
-| E2E-01 | E2E | AC-01, AC-02 | Full login → forced password change → app | Ends on the normal application shell | e2e/lab-03/authentication.spec.ts | Pending |
-| E2E-02 | E2E | AC-07 | Login → logout → attempt to reuse the app via back-navigation | Redirected to Login, no protected data shown | e2e/lab-03/authentication.spec.ts | Pending |
-| E2E-03 | E2E | FR-08 | Requester creates a Ticket, finds it in My Tickets, opens it (authenticated) | Full Lab 2 flow works end-to-end under real auth | e2e/lab-03/authentication.spec.ts | Pending |
-| E2E-04 | E2E | FR-13, FR-15 | IT Staff claims a Ticket, sets IT Priority, transitions status, posts a comment and a note | Queue and detail reflect every change | e2e/lab-03/staff-ticket-flow.spec.ts | Pending |
-| E2E-05 | E2E | AC-12 | Internal Note posted by staff never appears on the Requester's view of the same Ticket | Confirmed by loading the Ticket as the Requester | e2e/lab-03/staff-ticket-flow.spec.ts | Pending |
-| E2E-06 | E2E | FR-19, FR-21 | Administrator creates a user, sets a new initial password for them, that user logs in and is forced to change it | Full loop closes correctly | e2e/lab-03/user-administration.spec.ts | Pending |
-| E2E-07 | E2E | AC-13, AC-14 | Administrator attempts self-deactivation and last-admin deactivation in the UI | Both blocked with a clear message | e2e/lab-03/user-administration.spec.ts | Pending |
+| RESP-01 | Responsive | ui-spec.md §4 | Queue at desktop/tablet/mobile | Table → reduced table → cards; no horizontal scroll | e2e/lab-03/staff-ticket-flow.spec.ts | Pass |
+| RESP-02 | Responsive | ui-spec.md §7 | User Management at 3 breakpoints | Usable, no clipping/overlap | e2e/lab-03/user-administration.spec.ts | Pass |
+| RESP-03 | Responsive | ui-spec.md §2-3 | Login/Change Password at mobile width | No horizontal scroll, buttons touch-sized | e2e/lab-03/authentication.spec.ts | Pass |
+| E2E-01 | E2E | AC-01, AC-02 | Full login → forced password change → app | Ends on the normal application shell | e2e/lab-03/authentication.spec.ts | Pass |
+| E2E-02 | E2E | AC-07 | Login → logout → attempt to reuse the app via back-navigation | Redirected to Login, no protected data shown | e2e/lab-03/authentication.spec.ts | Pass |
+| E2E-03 | E2E | FR-08 | Requester creates a Ticket, finds it in My Tickets, opens it (authenticated) | Full Lab 2 flow works end-to-end under real auth | e2e/lab-03/authentication.spec.ts | Pass |
+| E2E-04 | E2E | FR-13, FR-15 | IT Staff claims a Ticket, sets IT Priority, transitions status, posts a comment and a note | Queue and detail reflect every change | e2e/lab-03/staff-ticket-flow.spec.ts | Pass |
+| E2E-05 | E2E | AC-12 | Internal Note posted by staff never appears on the Requester's view of the same Ticket | Confirmed by loading the Ticket as the Requester | e2e/lab-03/staff-ticket-flow.spec.ts | Pass |
+| E2E-06 | E2E | FR-19, FR-21 | Administrator creates a user, sets a new initial password for them, that user logs in and is forced to change it | Full loop closes correctly | e2e/lab-03/user-administration.spec.ts | Pass |
+| E2E-07 | E2E | AC-13, AC-14 | Administrator attempts self-deactivation and last-admin deactivation in the UI | Both blocked with a clear message | e2e/lab-03/user-administration.spec.ts | Pass |
 
 ## 3. Test Commands
 
@@ -633,3 +633,112 @@ scrollWidth` 834 against a 517 viewport), violating ui-spec.md §9's "no
 horizontal scroll on mobile for any new screen." Fixed by wrapping the
 table in a `table-responsive` container, confirmed the page's own
 `scrollWidth` matched its `clientWidth` afterward.
+
+### Issue 39 — E2E, visual inspection, and release
+
+Three new Playwright files (`e2e/lab-03/{authentication,staff-ticket-flow,
+user-administration}.spec.ts`) cover E2E-01..07 and RESP-01..03, sharing a
+`helpers.ts` that generalizes `e2e/lab-02/helpers.ts`'s real-login pattern
+to all three roles. A new `client/tests/lab-03/zen-green.style.test.tsx`
+covers STYLE-01..04. Screenshots at desktop/tablet/mobile for Login, Change
+Password, the Staff Queue, Staff Ticket Detail, and User Management now
+live under `artifacts/lab-03/screenshots/`.
+
+`cd server && npm test`: **165/165 passed** (17 files). `cd client && npm
+test`: **62/62 passed** (15 files), both `npx tsc --noEmit` clean. `npx
+playwright test`: **17/17 passed** (7 Lab 2 + 10 Lab 3), re-run clean under
+both default parallelism and `--workers=1`.
+
+This Issue's own testing surfaced more real, fixed problems than any other
+single Issue this sprint — writing E2E specs against the actual running app
+is exactly what kept catching things unit tests structurally cannot see
+(the same lesson Issue 34's client-cookie bug first taught):
+
+- **A fourth, and this time properly fixed, MIG-04 break.** Every prior fix
+  excluded a specific test-fixture ticket-number prefix; this time the
+  divergent Tickets were this Issue's own E2E Tickets, created through the
+  real UI with ordinary auto-generated numbers — no prefix existed to
+  exclude. The real fix: MIG-04 was never actually about "every Ticket
+  except some known fixtures," it was about Tickets that existed *before*
+  the `itPriority` column did. Rewritten to scope by `createdAt` against
+  that migration's own recorded `finished_at` (read from Prisma's
+  `_prisma_migrations` table) — which is what the test should have checked
+  from the start, and which needs no further patching as new sources of
+  legitimate post-migration divergence keep appearing, because it no longer
+  cares what created a Ticket, only when.
+- **A timezone bug in that very fix.** The first version compared
+  `"createdAt"` (a `timestamp`, no time zone) directly against
+  `_prisma_migrations.finished_at` (`timestamptz`) in one raw SQL
+  expression; this session's Postgres runs with `timezone = Asia/Bangkok`
+  (UTC+7), and Postgres's implicit cross-type cast shifted the comparison
+  by 7 hours, silently mis-scoping dozens of genuinely post-migration
+  Tickets as pre-migration. Caught by re-running immediately after the
+  "fix" and finding a *larger* mismatch count than before, not a smaller
+  one — investigated rather than dismissed. Corrected by resolving the
+  cutoff through Prisma's own query builder (which handles a JS `Date`
+  correctly regardless of session time zone) and doing the actual
+  two-column comparison in plain JS afterward, avoiding any cross-type SQL
+  comparison entirely.
+- **A real responsive defect in User Management, found only by looking at
+  the screenshots.** The `table-responsive` fix from Issue 38 stopped the
+  *page* from scrolling horizontally, but the *table itself* still
+  overflowed its visible area at tablet width (822px table in a 696px
+  visible area — Status and Edit columns pushed out of view) and was
+  substantially unusable at mobile (only Name and Email reachable). Fixed
+  in two steps: truncating the Email column with an ellipsis and a
+  `title` attribute (closing the tablet gap entirely — table and wrapper
+  now measure exactly equal), and adding a proper mobile card view mirroring
+  `StaffTicketQueue.tsx`'s own desktop-table/mobile-cards split, rather than
+  leaving a horizontally-scrollable table as the mobile experience. Both
+  `UserManagement.test.tsx` and the new E2E specs needed matching fixes for
+  the resulting dual desktop/mobile render (the same duplicate-match
+  problem `StaffTicketQueue.test.tsx` already solved, via `getAllBy*` and
+  scoping to `screen.getByRole("table")`/`page.getByRole("table")` rather
+  than an unscoped single-match query).
+- **Two screenshot-timing artifacts, caught by actually looking at the
+  captured images rather than trusting the assertions that preceded them.**
+  The Login screenshot initially captured `AuthContext`'s transient
+  "Loading…" placeholder instead of the real form — fixed by waiting for
+  the Sign In button before measuring or capturing. The Staff Ticket Detail
+  screenshot initially captured a mid-flight "Posting…" state for both
+  comment panels despite the preceding `getByText(...).toBeVisible()`
+  assertions having already passed — `getByText` can match a still-in-flight
+  textarea's own uncleared draft value, not only the posted, reloaded list
+  item, so the assertion was satisfied before the actual reload had
+  finished. Fixed by explicitly waiting for both "Post" buttons to return
+  to their idle label before capturing.
+- **A logout/remount race in `user-administration.spec.ts`'s E2E-06.**
+  Clicking Logout and immediately filling the resulting Login form's fields
+  raced the client-side route swap: the fill landed on an about-to-be-
+  replaced instance of the form and was discarded with it (Email ended up
+  empty while a later-filled Password survived) — `authentication.spec.ts`'s
+  own E2E-02 already had the correct pattern (wait for Sign In to settle
+  before touching the form); E2E-06 just hadn't applied it yet.
+
+None of these were found by guessing — each was root-caused from an actual
+failing assertion, an actual mismatched count, or an actual screenshot that
+didn't show what it was supposed to, then fixed and re-verified, matching
+this sprint's standing rule against accepting anything unexplained.
+
+The visual inspection checklist (ui-spec.md §10) is filled in with real
+evidence per item, not checked from memory — see that section for the full
+detail, including the two issues above and two smaller, non-blocking
+observations (Change Password/User Management's server-rejected-value
+errors surface as a form-level message rather than literally under the
+field, consistently across the app; the default Bootstrap focus ring is
+present and visible but a pale, uncustomized color against this theme).
+
+**Release PR — not opened.** Issue 39's own scope names this explicitly:
+"Release PR `lab3-staging → main` once all 8 feature PRs are merged." As of
+this write-up, none of PRs #41-#47 (Issues 32-38) nor this Issue's own PR
+have been merged — by explicit standing instruction this sprint, each
+Issue's branch was stacked on the previous one and built without waiting
+for a merge in between, so that Marc could review the whole sequence at
+once at the end. That means the "tests green from `main`" half of this
+Issue's Definition of Done is not yet meaningful either: `main` does not
+yet contain any Lab 3 code to test. Both remaining items are gated on the
+8 PRs actually being merged in order (#41 → #42 → #43 → #44 → #45 → #46 →
+#47 → this one) — a human action this agent does not perform (merging a PR
+is outside what it does on its own). Once merged, the release PR
+(`lab3-staging → main`) and a final from-`main` test run are the only
+things left to close out Issue 39 and the sprint.
