@@ -59,6 +59,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row below.
 | API-12 | API | BR-12 | Change password where new equals current | 400 | server/tests/lab-03/auth.api.test.ts | Pass |
 | API-13 | API | FR-05 | Change password with wrong current password | 401 | server/tests/lab-03/auth.api.test.ts | Pass |
 | API-14 | API | AC-02, BR-13 | Change password success | 200, mustChangePassword cleared, normal routes now reachable | server/tests/lab-03/auth.api.test.ts | Pass |
+| API-15 | API | BR-02 | Login with a stale mustChangePassword cookie already attached, as a different account | 200 — login succeeds regardless of any pre-existing session's state | server/tests/lab-03/auth.api.test.ts | Pass |
 
 ### API — Authorization (`authorization.api.test.ts`)
 
@@ -742,3 +743,30 @@ yet contain any Lab 3 code to test. Both remaining items are gated on the
 is outside what it does on its own). Once merged, the release PR
 (`lab3-staging → main`) and a final from-`main` test run are the only
 things left to close out Issue 39 and the sprint.
+
+### Release — all 9 PRs merged, tests re-run from `main`
+
+All 9 PRs (#40-#48), plus a reconciliation PR (#49, `feature/21-e2e-and-visual
+→ lab3-staging` — every intermediate PR after #41 had targeted the previous
+feature branch rather than `lab3-staging` directly, so only #41 had ever
+actually advanced it) and the release PR itself (#50, `lab3-staging → main`),
+are now merged. Re-run directly from `main`: **165/165 server**, **62/62
+client** (both `npx tsc --noEmit` clean), **17/17 E2E** (7 Lab 2 + 10 Lab 3).
+Issue 39's Definition of Done is now genuinely satisfied, not just prepared
+for.
+
+One more real defect surfaced while capturing the report's UI evidence
+(walking every screen for the final PDF, not a planned test run): logging in
+while a *different, unrelated* session's `mustChangePassword` cookie was
+still attached returned `403 PASSWORD_CHANGE_REQUIRED` instead of
+authenticating the new account — `/api/auth/login` itself was never on
+`requirePasswordChanged`'s exemption list, so the gate fired on the login
+attempt before the login logic ever got a chance to issue a fresh token.
+Unreachable through the real app's own navigation (the client redirects a
+`mustChangePassword:true` session away from `/login` before this could ever
+render), but reachable by anyone hitting the API directly with a stale
+cookie still attached — for instance a shared/kiosk browser, or simply two
+tabs. Fixed by adding `/api/auth/login` to the exemption list (login
+establishes a new identity; it was never supposed to depend on whatever
+session already happened to be attached). Added API-15 as a direct
+regression test. **166/166 server tests** after the fix.

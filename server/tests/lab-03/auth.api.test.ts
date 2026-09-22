@@ -147,6 +147,19 @@ describe("Password-change gate (BR-02/BR-04)", () => {
     const logout = await request(app).post("/api/auth/logout").set("Cookie", cookie);
     expect(logout.status).toBe(200);
   });
+
+  it("API-15 a stale mustChangePassword cookie does not block logging in as a different account", async () => {
+    const staleEmail = await createFreshRequester();
+    const staleCookie = extractCookie(await login(staleEmail));
+
+    const otherEmail = await createFreshRequester();
+    // The stale cookie is attached here on purpose — login must succeed
+    // regardless of what session (if any) the caller already has, since
+    // logging in establishes a brand new identity independent of it.
+    const res = await request(app).post("/api/auth/login").set("Cookie", staleCookie).send({ email: otherEmail, password: SEED_PASSWORD });
+    expect(res.status).toBe(200);
+    expect(res.body.data.email).toBe(otherEmail);
+  });
 });
 
 describe("POST /api/auth/change-password", () => {

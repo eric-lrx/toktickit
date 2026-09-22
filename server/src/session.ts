@@ -129,6 +129,7 @@ export function requireRole(...allowedRoles: Role[]) {
 // BR-02/BR-04 (briefing) — every route other than these three is blocked
 // while a password change is pending, regardless of role.
 const PASSWORD_GATE_EXEMPT_PATHS = new Set<string>([
+  "/api/auth/login",
   "/api/auth/me",
   "/api/auth/change-password",
   "/api/auth/logout",
