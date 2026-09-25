@@ -46,7 +46,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
 | UNIT-01 | Unit | BR-07 | Action status matrix lookup | Allowed targets per status; none for COMPLETED and CANCELLED | server/tests/lab-04/action-status.unit.test.ts | Pass |
-| UNIT-02 | Unit | BR-16 | `resolvedAt` rule for a transition | Set on → RESOLVED, kept on → CLOSED, cleared on → REOPENED, untouched otherwise | server/tests/lab-04/action-status.unit.test.ts | Pending |
+| UNIT-02 | Unit | BR-16 | `resolvedAt` rule for a transition | Set on → RESOLVED, kept on → CLOSED, cleared on → REOPENED, untouched otherwise | server/tests/lab-04/action-status.unit.test.ts | Pass |
 | UNIT-03 | Unit | BR-27 | Comma-separated `status` parser | Parses one or several statuses; rejects an unknown value by name | server/tests/lab-04/action-status.unit.test.ts | Pending |
 
 ### API — Actions Taken (`actions-taken.api.test.ts`)
@@ -89,30 +89,30 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| WF-01 | Workflow | BR-14 | Every allowed transition of the final matrix | 200 for each pair in the matrix | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-02 | Workflow | BR-14 | Disallowed transitions (sample per source status) | 409 naming allowed targets | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-03 | Workflow | AC-12, BR-15 | Resolve with a PLANNED action, by direct API call | 409 RESOLUTION_BLOCKED with that action's id; status unchanged | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-04 | Workflow | AC-12, BR-15 | Resolve with an IN_PROGRESS action | 409 RESOLUTION_BLOCKED | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-05 | Workflow | AC-13, BR-15 | Resolve when all actions are COMPLETED/CANCELLED | 200, resolvedAt set | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-06 | Workflow | AC-13, BR-15 | Resolve a Ticket with no actions | 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-07 | Workflow | BR-15 | Concurrent "resolve" and "create PLANNED action" on the same Ticket | Never ends RESOLVED with an open action | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-08 | Workflow | BR-16 | RESOLVED → CLOSED → REOPENED | resolvedAt kept on CLOSED, cleared on REOPENED | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-09 | Workflow | AC-15, BR-18 | Status history after three changes | Three rows, oldest first, correct from/to/by | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-10 | Workflow | AC-15 | Status history read by owner / other Requester / staff | 200 / 404 / 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-11 | Workflow | AC-16, BR-21 | Status change with a stale Ticket version | 409 STALE_UPDATE; status unchanged | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-12 | Workflow | BR-21 | Owner / priority change with a stale version; and without version | 409; without version 200 (Lab 3 contract) | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-13 | Workflow | AC-18 | `allowedTransitions` in the staff Ticket detail | Equals the matrix row for the current status | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| WF-14 | Workflow | BR-17 | Requester "appears resolved" signal on a Ticket with open actions | Signal recorded, status unchanged | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
+| WF-01 | Workflow | BR-14 | Every allowed transition of the final matrix | 200 for each pair in the matrix | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-02 | Workflow | BR-14 | Disallowed transitions (sample per source status) | 409 naming allowed targets | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-03 | Workflow | AC-12, BR-15 | Resolve with a PLANNED action, by direct API call | 409 RESOLUTION_BLOCKED with that action's id; status unchanged | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-04 | Workflow | AC-12, BR-15 | Resolve with an IN_PROGRESS action | 409 RESOLUTION_BLOCKED | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-05 | Workflow | AC-13, BR-15 | Resolve when all actions are COMPLETED/CANCELLED | 200, resolvedAt set | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-06 | Workflow | AC-13, BR-15 | Resolve a Ticket with no actions | 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-07 | Workflow | BR-15 | Concurrent "resolve" and "create PLANNED action" on the same Ticket | Never ends RESOLVED with an open action | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-08 | Workflow | BR-16 | RESOLVED → CLOSED → REOPENED | resolvedAt kept on CLOSED, cleared on REOPENED | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-09 | Workflow | AC-15, BR-18 | Status history after three changes | Three rows, oldest first, correct from/to/by | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-10 | Workflow | AC-15 | Status history read by owner / other Requester / staff | 200 / 404 / 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-11 | Workflow | AC-16, BR-21 | Status change with a stale Ticket version | 409 STALE_UPDATE; status unchanged | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-12 | Workflow | BR-21 | Owner / priority change with a stale version; and without version | 409; without version 200 (Lab 3 contract) | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-13 | Workflow | AC-18 | `allowedTransitions` in the staff Ticket detail | Equals the matrix row for the current status | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| WF-14 | Workflow | BR-17 | Requester "appears resolved" signal on a Ticket with open actions | Signal recorded, status unchanged | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
 
 ### Authorization — revised matrix (`ticket-workflow.api.test.ts`)
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| AUTHZ-07 | Authorization | AC-17 | Administrator claims / reassigns a Ticket | 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| AUTHZ-08 | Authorization | AC-17 | Administrator sets IT Priority | 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| AUTHZ-09 | Authorization | AC-17 | Administrator changes status (incl. resolution gate applies to them too) | 200; 409 when blocked | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| AUTHZ-10 | Authorization | AC-17 | Administrator posts a Public Comment and an Internal Note | 201 each | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
-| AUTHZ-11 | Authorization | BR-14 | Requester calls status / owner / priority on their own Ticket | 403 each | server/tests/lab-04/ticket-workflow.api.test.ts | Pending |
+| AUTHZ-07 | Authorization | AC-17 | Administrator claims / reassigns a Ticket | 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| AUTHZ-08 | Authorization | AC-17 | Administrator sets IT Priority | 200 | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| AUTHZ-09 | Authorization | AC-17 | Administrator changes status (incl. resolution gate applies to them too) | 200; 409 when blocked | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| AUTHZ-10 | Authorization | AC-17 | Administrator posts a Public Comment and an Internal Note | 201 each | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
+| AUTHZ-11 | Authorization | BR-14 | Requester calls status / owner / priority on their own Ticket | 403 each | server/tests/lab-04/ticket-workflow.api.test.ts | Pass |
 
 ### API — Requester dashboard (`requester-dashboard.api.test.ts`)
 
@@ -156,7 +156,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 |---|---|---|---|---|---|---|
 | MIG-01 | Migration | §7 | Every pre-migration Ticket has `version = 1` | True for every row older than the migration | server/tests/lab-04/migration-regression.api.test.ts | Pass |
 | MIG-02 | Migration | §7 | Legacy RESOLVED/CLOSED Tickets got `resolvedAt = updatedAt` | True for every such row older than the migration | server/tests/lab-04/migration-regression.api.test.ts | Pass |
-| MIG-03 | Migration | AC-13 | A legacy Ticket (no actions) moves to RESOLVED | 200, not blocked | server/tests/lab-04/migration-regression.api.test.ts | Pending |
+| MIG-03 | Migration | AC-13 | A legacy Ticket (no actions) moves to RESOLVED | 200, not blocked | server/tests/lab-04/migration-regression.api.test.ts | Pass |
 | MIG-04 | Migration | §7 | Lab 1–3 data still reachable: a Lab 2 Ticket, its Attachments, comments, notes | Same content before/after | server/tests/lab-04/migration-regression.api.test.ts | Pass |
 | MIG-05 | Migration | §7 rollback | Rollback on a restored copy of the dump | Schema equals Lab 3 (`prisma migrate diff` empty), Lab 1–3 row counts unchanged | server/scripts/test-rollback.sh (output kept in this file) | Pass |
 | MIG-06 | Migration | §7 seed | Seed run twice | Same row counts after the second run | server/tests/lab-04/migration-regression.api.test.ts | Pass |
@@ -185,10 +185,10 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | UI-13 | UI component | AC-16 | STALE_UPDATE on save | Warning with "Reload"; typed values kept until reload | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
 | UI-14 | UI component | AC-09, AC-29 | Requester Ticket Detail | Read-only Actions Taken, no create/edit controls, no Internal Notes in the DOM | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
 | UI-15 | UI component | AC-14 | Resolved Ticket | "Add Action" replaced by the reopen message | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
-| UI-16 | UI component | AC-18 | Status select options | Exactly the API's `allowedTransitions` | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
-| UI-17 | UI component | AC-12 | RESOLUTION_BLOCKED response | Inline message; blocking actions highlighted and linked | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
-| UI-18 | UI component | FR-06 | Successful status change | Badge, options, and history refreshed; live-region message | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
-| UI-19 | UI component | AC-15 | Status history timeline | Rows oldest first with who and when | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
+| UI-16 | UI component | AC-18 | Status select options | Exactly the API's `allowedTransitions` | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
+| UI-17 | UI component | AC-12 | RESOLUTION_BLOCKED response | Inline message; blocking actions highlighted and linked | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
+| UI-18 | UI component | FR-06 | Successful status change | Badge, options, and history refreshed; live-region message | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
+| UI-19 | UI component | AC-15 | Status history timeline | Rows oldest first with who and when | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
 | UI-20 | UI component | FR-15 | Role navigation and landing screen | Dashboard first for every role; Administrator also sees My Queue | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
 | UI-21 | UI component | AC-25, FR-17 | Double click on "Save Action" | One request; submit disabled while in flight; `Idempotency-Key` sent | client/tests/lab-04/Hardening.test.tsx | Pending |
 | UI-22 | UI component | AC-26, FR-18 | Network failure on Create Ticket, Action form, comment box | Every entered value kept | client/tests/lab-04/Hardening.test.tsx | Pending |
@@ -241,14 +241,17 @@ same PR as the behavior change, and the test then asserts the new rule.
 
 | Test | File | Old assertion | New assertion | Reason | Issue |
 |---|---|---|---|---|---|
-| Administrator posts a Public Comment | server/tests/lab-03/comments-notes.api.test.ts (l.93) | 403 | 201 | Revised matrix, AC-17 | 25 |
-| Administrator creates an Internal Note | server/tests/lab-03/comments-notes.api.test.ts (l.151) | 403 | 201 | Revised matrix, AC-17 | 25 |
-| AUTHZ-11 Administrator claims/reassigns | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.147) | 403 | 200 | Revised matrix, AC-17 | 25 |
-| AUTHZ-11 Administrator changes status | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.234) | 403 | 200 | Revised matrix, AC-17 | 25 |
+| Administrator posts a Public Comment | server/tests/lab-03/comments-notes.api.test.ts (l.93) | 403 | 201 | Revised matrix, AC-17 | 25 (done) |
+| Administrator creates an Internal Note | server/tests/lab-03/comments-notes.api.test.ts (l.151) | 403 | 201 | Revised matrix, AC-17 | 25 (done) |
+| AUTHZ-11 Administrator claims/reassigns | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.147) | 403 | 200 | Revised matrix, AC-17 | 25 (done) |
+| AUTHZ-11 Administrator changes status | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.234) | 403 | 200 | Revised matrix, AC-17 | 25 (done) |
 | UI-09 Administrator navigation | client/tests/lab-03/AppShell.test.tsx (l.79) | "Users" only, no "My Queue" | Dashboard, My Queue, Users | Revised matrix, FR-15 | 26 |
 | E2E-01 lands on My Tickets after login | e2e/lab-03/authentication.spec.ts (l.47) | URL `/tickets` | URL `/dashboard`, then "My Tickets" link visible | Dashboard is the landing screen, FR-15 | 27 |
 | RESP-01 Ticket Queue across breakpoints | e2e/lab-03/staff-ticket-flow.spec.ts (l.111) | Relies on landing on the queue | Navigates to "My Queue" first | Otherwise it would silently check the dashboard and save the wrong screenshot | 26 |
 | GET /api/requesters (2 tests) | server/tests/lab-02/requester-context.api.test.ts (l.30–42) | 200 with the Requester list | Replaced by HARD-04: no data returned | Unauthenticated disclosure removed, BR-31 | 28 |
+| STAFF-Q-04 status filter | server/tests/lab-03/staff-queue.api.test.ts (l.73) | Seeded RESOLVED Ticket on page 1 of *all* RESOLVED Tickets | Same assertions, scoped with `search=TKT-9999` like its siblings STAFF-Q-05/06 | Test isolation, not a spec change: 84 RESOLVED Tickets had become newer than the seeded one (43 from Lab 4 workflow fixtures, 41 from other runs) | 25 (done) |
+| STAFF-Q-07 ownerId filter | server/tests/lab-03/staff-queue.api.test.ts (l.106) | Seeded Margaret-owned Tickets on page 1 of *all* her Tickets | Same assertions, scoped with `search=TKT-9999` | Test isolation: 51 of the 54 newer Margaret-owned Tickets came from Lab 3's own claim tests, so it was failing on its own | 25 (done) |
+| UI-14 Claim call arguments; staff detail fixtures | client/tests/lab-03/StaffTicketDetail.test.tsx (l.18, l.63–71, l.92), client/tests/lab-03/zen-green.style.test.tsx (l.52) | `setTicketOwner(1, userId)`; fixture without Lab 4 fields | `setTicketOwner(1, userId, 1)`; fixtures carry `version`, `resolvedAt`, `allowedTransitions` matching their status | Contract change: the UI always sends the version it read (BR-21) and renders the API's `allowedTransitions` | 25 (done) |
 
 ## 4. Acceptance Criteria traceability
 
@@ -388,3 +391,55 @@ performer and assignee. Console errors after reload: 0.
 
 **Covered:** FR-01–FR-05 (UI), AC-04, AC-05, AC-06, AC-09, AC-10, AC-14, AC-16,
 AC-29 (Requester view). Tests: UI-09–UI-15, STYLE-02–STYLE-04.
+
+### Issue 25 — Ticket workflow and resolution gate
+
+**TDD.** `ticket-workflow.api.test.ts` (WF-01–WF-14, AUTHZ-07–AUTHZ-11), UNIT-02,
+MIG-03, and `TicketWorkflow.test.tsx` (UI-16–UI-19) were written first. The new
+behavior failed for the expected reasons (Administrator `403`, no gate, no
+history route, no `version`). WF-01, WF-02, WF-06, WF-14, AUTHZ-11, and MIG-03
+passed from the start: they pin behavior that must not change (the matrix
+itself, Requester rejection, Tickets without actions not blocked).
+
+**Implementation notes.** The status change runs in one transaction with the
+Ticket row locked (`SELECT … FOR UPDATE`), in this order: version, matrix, gate,
+update with `resolvedAt`, history row. Action Taken writes take the same lock,
+which WF-07 exercises: eight real concurrent "resolve" + "create action" pairs,
+each ending with exactly one winner and never a RESOLVED Ticket with an open
+action.
+
+**Lab 2–3 tests changed**, all listed in §3: the four planned Administrator
+rows; two Lab 3 queue tests whose own fixtures had grown past their page-1
+assumption (counts measured before changing anything); the staff detail
+fixtures and one argument assertion that follow the new contract.
+
+**A real defect caught by the Lab 3 E2E regression.** E2E-04 changes IT
+Priority and then status without waiting. The status request went out with the
+version read before the priority response arrived, so the server answered
+`STALE_UPDATE` and the user conflicted with their own change. Fixed on the
+client: workflow writes are serialized, and each write uses the version returned
+by the previous response. Conflicts between two different users are still
+detected (WF-11, WF-12).
+
+**Manual check in the running app** (temporary Playwright script, then deleted):
+- Seed Ticket #2 (one PLANNED action). The screen shows "This ticket still has
+  open actions…", links the action, and highlights its row. A direct
+  `PATCH /status` returns `409 {"code":"RESOLUTION_BLOCKED","blockingActionIds":[31]}`.
+  The Ticket is still OPEN, version 1, after both attempts.
+- A throwaway Ticket: blocked, then the action is completed from the linked row,
+  and the message goes away. Resolved: "Status changed to Resolved" is announced
+  and "Add Action" is replaced by the reopen message. The history shows three
+  steps, and the owning Requester sees the same three with no Internal Note.
+
+**Results:**
+- Server: **231/231** (Lab 1–3: 166, Lab 4: 65), run twice.
+- Client: **81/81**; `tsc --noEmit` clean in both packages.
+- Playwright (Lab 2–3): 17/17 on 6 of 7 full runs after the fix. On one run,
+  Lab 3's E2E-02 (logout, then back-navigation, then expects Sign In within 5 s)
+  failed at the back-navigation step. It did not reproduce in 12 isolated
+  repeats nor in 4 more full runs, and it exercises no code this Issue touched.
+  It is recorded here as intermittent, not hidden, to investigate in Issue 28.
+
+**Covered:** FR-06–FR-10, BR-13–BR-18, BR-21; AC-12, AC-13, AC-15, AC-16
+(Ticket side), AC-17, AC-18. Tests: UNIT-02, MIG-03, WF-01–WF-14,
+AUTHZ-07–AUTHZ-11, UI-16–UI-19.

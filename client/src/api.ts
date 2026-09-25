@@ -478,6 +478,11 @@ export async function getStaffQueue(query: StaffQueueQuery): Promise<StaffQueueR
 // Issue 36 — IT Staff Ticket Detail and workflow.
 export interface StaffTicketDetail extends StaffTicket {
   categoryName: string;
+  // Lab 4 — optimistic-concurrency counter, BR-16's resolvedAt, and the
+  // targets the backend's matrix allows from the current status.
+  version: number;
+  resolvedAt: string | null;
+  allowedTransitions: TicketStatus[];
   attachments: Attachment[];
   publicComments: PublicComment[];
   internalNotes: InternalNote[];
@@ -508,34 +513,35 @@ export async function getStaffTicket(id: number): Promise<StaffTicketDetail> {
   return json.data;
 }
 
-export async function setTicketOwner(id: number, ticketOwnerId: number | null): Promise<void> {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/owner`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticketOwnerId }),
-  });
-  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update the ticket owner."));
+// Lab 4 (BR-21) — the UI always sends the version it read; errors are
+// ApiErrors so screens can react to STALE_UPDATE and RESOLUTION_BLOCKED.
+// Each resolves with the Ticket's new version, so the next write in a quick
+// sequence uses it instead of the version read before the first one.
+export interface TicketWriteResult {
+  version?: number;
 }
 
-export async function setTicketItPriority(id: number, itPriority: RequestedPriority): Promise<void> {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/priority`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ itPriority }),
-  });
-  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update IT Priority."));
+async function ticketWrite(url: string, body: unknown, fallback: string): Promise<TicketWriteResult> {
+  const res = await sendJson(url, "PATCH", body, fallback);
+  const json = await res.json().catch(() => ({}));
+  return { version: typeof json?.data?.version === "number" ? json.data.version : undefined };
 }
 
-export async function setTicketStatus(id: number, status: TicketStatus, resolutionSummary?: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/staff/tickets/${id}/status`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, resolutionSummary }),
-  });
-  if (!res.ok) throw new Error(await readStaffError(res, "Unable to update status."));
+export async function setTicketOwner(id: number, ticketOwnerId: number | null, version?: number): Promise<TicketWriteResult> {
+  return ticketWrite(`${API_URL}/api/staff/tickets/${id}/owner`, { ticketOwnerId, version }, "Unable to update the ticket owner.");
+}
+
+export async function setTicketItPriority(id: number, itPriority: RequestedPriority, version?: number): Promise<TicketWriteResult> {
+  return ticketWrite(`${API_URL}/api/staff/tickets/${id}/priority`, { itPriority, version }, "Unable to update IT Priority.");
+}
+
+export async function setTicketStatus(
+  id: number,
+  status: TicketStatus,
+  resolutionSummary?: string,
+  version?: number
+): Promise<TicketWriteResult> {
+  return ticketWrite(`${API_URL}/api/staff/tickets/${id}/status`, { status, resolutionSummary, version }, "Unable to update status.");
 }
 
 // Requester-only — BR-05: sets the signal, never the formal status.
@@ -747,6 +753,29 @@ export async function updateTicketAction(
   input: Partial<ActionInput> & { version: number }
 ): Promise<ActionTaken> {
   const res = await sendJson(`${API_URL}/api/actions/${actionId}`, "PATCH", input, "Unable to save the action. Please try again.");
+  const json = await res.json();
+  return json.data;
+}
+
+// Lab 4, BR-18 — append-only status history, oldest first.
+export interface StatusChange {
+  id: number;
+  fromStatus: TicketStatus;
+  toStatus: TicketStatus;
+  changedByName: string;
+  changedByRole: Role;
+  changedAt: string;
+}
+
+export async function getStatusHistory(ticketId: number): Promise<StatusChange[]> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/tickets/${ticketId}/status-history`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new ApiError(0, "Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) throw await toApiError(res, "Unable to load the status history.");
   const json = await res.json();
   return json.data;
 }

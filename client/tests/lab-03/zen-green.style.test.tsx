@@ -67,6 +67,10 @@ const baseTicket: StaffTicketDetailType = {
   updatedAt: "2026-09-01T00:00:00.000Z",
   resolutionSummary: null,
   requesterResolutionIndicatedAt: null,
+  // Lab 4 contract fields (docs/lab-04/tests.md §3).
+  version: 1,
+  resolvedAt: null,
+  allowedTransitions: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
   attachments: [],
   publicComments: [],
   internalNotes: [],
