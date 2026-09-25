@@ -646,3 +646,107 @@ export async function setAdminUserPassword(id: number, newPassword: string): Pro
   });
   if (!res.ok) throw new Error(await readStaffError(res, "Unable to set the new password. Please try again."));
 }
+
+// Lab 4 — carries the API's error code (STALE_UPDATE, RESOLUTION_BLOCKED, ...)
+// and extra fields (current, blockingActionIds) so screens can react to a
+// specific conflict instead of only showing a message.
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly code?: string,
+    readonly details: Record<string, unknown> = {}
+  ) {
+    super(message);
+  }
+}
+
+async function toApiError(res: Response, fallback: string): Promise<ApiError> {
+  if (res.status >= 500) return new ApiError(res.status, fallback);
+  try {
+    const body = await res.json();
+    const { message, code, ...details } = body?.error ?? {};
+    return new ApiError(res.status, typeof message === "string" ? message : fallback, code, details);
+  } catch {
+    return new ApiError(res.status, fallback);
+  }
+}
+
+async function sendJson(url: string, method: string, body: unknown, fallback: string): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    console.error(err);
+    throw new ApiError(0, "Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) throw await toApiError(res, fallback);
+  return res;
+}
+
+// Lab 4, Issue 24 — Actions Taken (docs/lab-04/api-spec.md).
+export type ActionStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionAt: string;
+  description: string;
+  result: string | null;
+  status: ActionStatus;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  performedById: number;
+  performedByName: string;
+  assigneeId: number | null;
+  assigneeName: string | null;
+  assigneeActive: boolean | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionInput {
+  description: string;
+  actionAt?: string;
+  result?: string | null;
+  assigneeId?: number | null;
+  status?: ActionStatus;
+  followUpRequired?: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+export async function getTicketActions(ticketId: number): Promise<ActionTaken[]> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/tickets/${ticketId}/actions`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new ApiError(0, "Unable to reach the server. Please try again.");
+  }
+  if (!res.ok) throw await toApiError(res, "Unable to load actions. Please try again.");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function createTicketAction(ticketId: number, input: ActionInput): Promise<ActionTaken> {
+  const res = await sendJson(`${API_URL}/api/tickets/${ticketId}/actions`, "POST", input, "Unable to save the action. Please try again.");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function updateTicketAction(
+  actionId: number,
+  input: Partial<ActionInput> & { version: number }
+): Promise<ActionTaken> {
+  const res = await sendJson(`${API_URL}/api/actions/${actionId}`, "PATCH", input, "Unable to save the action. Please try again.");
+  const json = await res.json();
+  return json.data;
+}

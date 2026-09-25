@@ -41,6 +41,10 @@ model User {
   ownedTickets       Ticket[] @relation("TicketOwner")
   publicComments     PublicComment[]
   internalNotes      InternalNote[]
+  actionsPerformed   ActionTaken[] @relation("ActionPerformer")
+  actionsAssigned    ActionTaken[] @relation("ActionAssignee")
+  statusChanges      TicketStatusChange[]
+  idempotencyKeys    IdempotencyKey[]
 }
 
 model RelatedSystem {
@@ -106,6 +110,13 @@ model Ticket {
   publicComments PublicComment[]
   internalNotes  InternalNote[]
 
+  // Lab 4 (specification.md §7) — optimistic concurrency counter and the
+  // moment the Ticket last became RESOLVED (BR-16).
+  version       Int       @default(1)
+  resolvedAt    DateTime?
+  actionsTaken  ActionTaken[]
+  statusChanges TicketStatusChange[]
+
   @@index([requesterId])
   @@index([createdAt])
   @@index([ticketOwnerId])
@@ -140,6 +151,68 @@ model InternalNote {
   createdAt DateTime @default(now())
 
   @@index([ticketId])
+}
+
+enum ActionStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Lab 4, Issue 23 — the handout's seven fields plus assigneeId and status
+// (specification.md §11: Part 6 and the resolution gate need both) and a
+// version counter for optimistic concurrency (BR-19/BR-20).
+model ActionTaken {
+  id               Int          @id @default(autoincrement())
+  ticketId         Int
+  ticket           Ticket       @relation(fields: [ticketId], references: [id])
+  performedById    Int
+  performedBy      User         @relation("ActionPerformer", fields: [performedById], references: [id])
+  assigneeId       Int?
+  assignee         User?        @relation("ActionAssignee", fields: [assigneeId], references: [id])
+  actionAt         DateTime     @default(now())
+  description      String
+  result           String?
+  status           ActionStatus @default(PLANNED)
+  followUpRequired Boolean      @default(false)
+  followUpNote     String?
+  attachmentNotes  String?
+  version          Int          @default(1)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([ticketId])
+  @@index([assigneeId, status])
+}
+
+// Append-only (BR-18): no update or delete route exists for this table.
+model TicketStatusChange {
+  id          Int          @id @default(autoincrement())
+  ticketId    Int
+  ticket      Ticket       @relation(fields: [ticketId], references: [id])
+  fromStatus  TicketStatus
+  toStatus    TicketStatus
+  changedById Int
+  changedBy   User         @relation(fields: [changedById], references: [id])
+  changedAt   DateTime     @default(now())
+
+  @@index([ticketId])
+}
+
+// BR-28 — one row per (user, Idempotency-Key): a repeated create returns the
+// stored response instead of creating a duplicate.
+model IdempotencyKey {
+  id             Int      @id @default(autoincrement())
+  key            String
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  route          String
+  responseStatus Int
+  responseBody   Json
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, key])
 }
 
 // Issue 11 — Attachment lifecycle. storedName is a UUID + validated extension,
