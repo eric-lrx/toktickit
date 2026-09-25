@@ -66,6 +66,28 @@ describe("MIG-02 — legacy RESOLVED/CLOSED Tickets got resolvedAt backfilled fr
   });
 });
 
+describe("MIG-03 — legacy Tickets are never blocked by the resolution gate", () => {
+  it("resolves a pre-migration Ticket that has no Actions Taken", async () => {
+    const cutoff = await migrationFinishedAt();
+    // A Lab 3 test fixture, never a seeded or hand-created Ticket: resolving
+    // it changes legacy data, so the subject must be disposable.
+    const legacy = await getPrisma().ticket.findFirst({
+      where: {
+        createdAt: { lt: cutoff },
+        ticketNumber: { startsWith: "TKT-TEST-" },
+        status: { in: ["OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "REOPENED"] },
+        actionsTaken: { none: {} },
+      },
+      orderBy: { id: "asc" },
+    });
+    expect(legacy, "expected a pre-migration fixture Ticket without actions").not.toBeNull();
+    const cookie = await loginAs("margaret.hamilton@toktickit.com");
+    const res = await request(app).patch(`/api/staff/tickets/${legacy!.id}/status`).set("Cookie", cookie).send({ status: "RESOLVED" });
+    expect(res.status).toBe(200);
+    expect(res.body.data.resolvedAt).not.toBeNull();
+  });
+});
+
 describe("MIG-04 — Lab 1–3 data is still reachable after the migration", () => {
   let requesterCookie: string;
   let staffCookie: string;
