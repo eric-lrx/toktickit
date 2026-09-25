@@ -20,6 +20,9 @@ import {
   signSession,
 } from "./session.js";
 import { allowedTransitions, isAllowedTransition } from "./statusTransitions.js";
+import { registerActionsTakenRoutes } from "./actionsTaken.js";
+import { OPEN_ACTION_STATUSES } from "./actionStatus.js";
+import { nextResolvedAt } from "./ticketWorkflow.js";
 
 // Issue 34 — every Requester route requires both a session (401 if absent)
 // and the REQUESTER role (403 for any other authenticated role); ownership
@@ -589,10 +592,45 @@ app.post("/api/auth/change-password", requireAuth, async (req: AuthedRequest, re
 // ---------------------------------------------------------------------------
 const STAFF_SORT_FIELDS = ["createdAt", "updatedAt", "itPriority", "ticketNumber"] as const;
 const requireStaffRead = [requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR")];
-// Issue 36 — Administrator is read-only on Tickets (specification.md §11's
-// authorization-matrix decision): claim/reassign/priority/status are
-// IT_STAFF-only, unlike the read routes above.
-const requireStaffWrite = [requireAuth, requireRole("IT_STAFF")];
+// Lab 4 (docs/lab-04/specification.md §4, §11) — the Administrator now
+// performs IT Staff behavior on Tickets (handout §4.3), reversing Lab 3's
+// read-only decision on purpose: claim/reassign/priority/status/notes are
+// open to both roles.
+const requireStaffWrite = [requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR")];
+
+// BR-21 — optional on the Lab 3 Ticket routes so their contract keeps
+// working; the Lab 4 UI always sends it. undefined = not sent.
+function parseOptionalVersion(raw: unknown): number | undefined | "invalid" {
+  if (raw === undefined) return undefined;
+  return Number.isInteger(raw) ? (raw as number) : "invalid";
+}
+
+function staleTicketBody(t: { id: number; status: string; version: number; ticketOwnerId: number | null; itPriority: string; resolutionSummary: string | null; resolvedAt: Date | null }) {
+  return {
+    error: {
+      message: "This ticket was changed by someone else. Reload to see the latest version.",
+      code: "STALE_UPDATE",
+      current: {
+        id: t.id,
+        status: t.status,
+        version: t.version,
+        ticketOwnerId: t.ticketOwnerId,
+        itPriority: t.itPriority,
+        resolutionSummary: t.resolutionSummary,
+        resolvedAt: t.resolvedAt,
+      },
+    },
+  };
+}
+
+class WorkflowError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: unknown
+  ) {
+    super("workflow error");
+  }
+}
 
 app.get("/api/staff/tickets", ...requireStaffRead, async (req: AuthedRequest, res: Response) => {
   const sort = (req.query.sort as string) ?? "updatedAt";
@@ -751,6 +789,8 @@ app.get("/api/staff/tickets/:id", ...requireStaffRead, async (req: AuthedRequest
         ...rest,
         ticketOwnerName: ticketOwner?.name ?? null,
         categoryName: category.name,
+        // Lab 4 — the UI offers exactly these, never a copy of the table.
+        allowedTransitions: allowedTransitions(rest.status),
         attachments,
         publicComments: comments.map((c) => ({
           id: c.id,
@@ -796,13 +836,25 @@ app.patch("/api/staff/tickets/:id/owner", ...requireStaffWrite, async (req: Auth
     }
   }
 
+  const version = parseOptionalVersion(req.body?.version);
+  if (version === "invalid") {
+    res.status(400).json({ error: { message: "version must be an integer" } });
+    return;
+  }
+
   try {
-    const updated = await getPrisma().ticket.update({
-      where: { id },
-      data: { ticketOwnerId },
-      include: { ticketOwner: { select: { name: true } } },
+    const { count } = await getPrisma().ticket.updateMany({
+      where: { id, ...(version !== undefined ? { version } : {}) },
+      data: { ticketOwnerId, version: { increment: 1 } },
     });
-    res.status(200).json({ data: { ticketOwnerId: updated.ticketOwnerId, ticketOwnerName: updated.ticketOwner?.name ?? null } });
+    const updated = await getPrisma().ticket.findUniqueOrThrow({ where: { id }, include: { ticketOwner: { select: { name: true } } } });
+    if (count === 0) {
+      res.status(409).json(staleTicketBody(updated));
+      return;
+    }
+    res.status(200).json({
+      data: { ticketOwnerId: updated.ticketOwnerId, ticketOwnerName: updated.ticketOwner?.name ?? null, version: updated.version },
+    });
   } catch {
     res.status(500).json({ error: { message: "Unable to update the ticket owner" } });
   }
@@ -824,12 +876,23 @@ app.patch("/api/staff/tickets/:id/priority", ...requireStaffWrite, async (req: A
     return;
   }
 
+  const version = parseOptionalVersion(req.body?.version);
+  if (version === "invalid") {
+    res.status(400).json({ error: { message: "version must be an integer" } });
+    return;
+  }
+
   try {
-    const updated = await getPrisma().ticket.update({
-      where: { id },
-      data: { itPriority: req.body.itPriority },
+    const { count } = await getPrisma().ticket.updateMany({
+      where: { id, ...(version !== undefined ? { version } : {}) },
+      data: { itPriority: req.body.itPriority, version: { increment: 1 } },
     });
-    res.status(200).json({ data: { itPriority: updated.itPriority } });
+    const updated = await getPrisma().ticket.findUniqueOrThrow({ where: { id } });
+    if (count === 0) {
+      res.status(409).json(staleTicketBody(updated));
+      return;
+    }
+    res.status(200).json({ data: { itPriority: updated.itPriority, version: updated.version } });
   } catch {
     res.status(500).json({ error: { message: "Unable to update IT Priority" } });
   }
@@ -838,6 +901,12 @@ app.patch("/api/staff/tickets/:id/priority", ...requireStaffWrite, async (req: A
 // BR-22/BR-23 (briefing) — the transition table is the sole source of
 // truth; a disallowed transition names the current state and every allowed
 // target so the caller (or its UI) can self-correct without guessing.
+//
+// Lab 4 — one transaction with the Ticket row locked (SELECT … FOR UPDATE):
+// version check (BR-21) → transition matrix (BR-14) → resolution gate
+// (BR-15) → update with resolvedAt (BR-16) → status-history row (BR-18).
+// Action Taken writes lock the same row (actionsTaken.ts), so no action can
+// be created between the gate's check and the RESOLVED update.
 app.patch("/api/staff/tickets/:id/status", ...requireStaffWrite, async (req: AuthedRequest, res: Response) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
@@ -854,25 +923,105 @@ app.patch("/api/staff/tickets/:id/status", ...requireStaffWrite, async (req: Aut
     res.status(400).json({ error: { message: `invalid status: '${targetStatus}'` } });
     return;
   }
-  if (!isAllowedTransition(ticket.status, targetStatus)) {
-    const allowed = allowedTransitions(ticket.status);
-    const message =
-      allowed.length === 0
-        ? `Cannot move from ${ticket.status}: no transitions are allowed (terminal state).`
-        : `Cannot move from ${ticket.status} to ${targetStatus}. Allowed: ${allowed.join(", ")}.`;
-    res.status(409).json({ error: { message } });
+  const version = parseOptionalVersion(req.body?.version);
+  if (version === "invalid") {
+    res.status(400).json({ error: { message: "version must be an integer" } });
     return;
   }
-
   const resolutionSummary = typeof req.body?.resolutionSummary === "string" ? req.body.resolutionSummary.trim() : undefined;
+
   try {
-    const updated = await getPrisma().ticket.update({
-      where: { id },
-      data: { status: targetStatus, ...(resolutionSummary !== undefined ? { resolutionSummary } : {}) },
+    const updated = await getPrisma().$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Ticket" WHERE id = ${id} FOR UPDATE`;
+      const current = await tx.ticket.findUniqueOrThrow({ where: { id } });
+
+      if (version !== undefined && current.version !== version) {
+        throw new WorkflowError(409, staleTicketBody(current));
+      }
+      if (!isAllowedTransition(current.status, targetStatus)) {
+        const allowed = allowedTransitions(current.status);
+        const message =
+          allowed.length === 0
+            ? `Cannot move from ${current.status}: no transitions are allowed (terminal state).`
+            : `Cannot move from ${current.status} to ${targetStatus}. Allowed: ${allowed.join(", ")}.`;
+        throw new WorkflowError(409, { error: { message } });
+      }
+      if (targetStatus === "RESOLVED") {
+        const blocking = await tx.actionTaken.findMany({
+          where: { ticketId: id, status: { in: OPEN_ACTION_STATUSES } },
+          select: { id: true },
+          orderBy: { id: "asc" },
+        });
+        if (blocking.length > 0) {
+          throw new WorkflowError(409, {
+            error: {
+              message: "Resolve or cancel the open Actions Taken first.",
+              code: "RESOLUTION_BLOCKED",
+              blockingActionIds: blocking.map((a) => a.id),
+            },
+          });
+        }
+      }
+
+      const saved = await tx.ticket.update({
+        where: { id },
+        data: {
+          status: targetStatus,
+          resolvedAt: nextResolvedAt(targetStatus, current.resolvedAt, new Date()),
+          version: { increment: 1 },
+          ...(resolutionSummary !== undefined ? { resolutionSummary } : {}),
+        },
+      });
+      await tx.ticketStatusChange.create({
+        data: { ticketId: id, fromStatus: current.status, toStatus: targetStatus, changedById: req.user!.id },
+      });
+      return saved;
     });
-    res.status(200).json({ data: { status: updated.status, resolutionSummary: updated.resolutionSummary } });
-  } catch {
+    res.status(200).json({
+      data: {
+        status: updated.status,
+        resolutionSummary: updated.resolutionSummary,
+        resolvedAt: updated.resolvedAt,
+        version: updated.version,
+        allowedTransitions: allowedTransitions(updated.status),
+      },
+    });
+  } catch (err) {
+    if (err instanceof WorkflowError) {
+      res.status(err.status).json(err.body);
+      return;
+    }
     res.status(500).json({ error: { message: "Unable to update status" } });
+  }
+});
+
+// Lab 4, BR-18 — append-only history, oldest first. Requester: own Ticket
+// only (404 otherwise, never 403 — BR-16 of Lab 3).
+app.get("/api/tickets/:id/status-history", requireAuth, async (req: AuthedRequest, res: Response) => {
+  const id = Number(req.params.id);
+  const ticket = Number.isInteger(id) ? await getPrisma().ticket.findUnique({ where: { id } }) : null;
+  if (!ticket || (req.user!.role === "REQUESTER" && ticket.requesterId !== req.user!.id)) {
+    res.status(404).json({ error: { message: "Ticket not found" } });
+    return;
+  }
+  try {
+    const rows = await getPrisma().ticketStatusChange.findMany({
+      where: { ticketId: id },
+      include: { changedBy: { select: { name: true, role: true } } },
+      orderBy: [{ changedAt: "asc" }, { id: "asc" }],
+    });
+    res.status(200).json({
+      data: rows.map((r) => ({
+        id: r.id,
+        fromStatus: r.fromStatus,
+        toStatus: r.toStatus,
+        changedByName: r.changedBy.name,
+        changedByRole: r.changedBy.role,
+        changedAt: r.changedAt,
+      })),
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load the status history" } });
   }
 });
 
@@ -892,7 +1041,7 @@ app.patch("/api/tickets/:id/resolution-indicated", ...requireRequester, async (r
   try {
     const updated = await getPrisma().ticket.update({
       where: { id },
-      data: { requesterResolutionIndicatedAt: new Date() },
+      data: { requesterResolutionIndicatedAt: new Date(), version: { increment: 1 } },
     });
     res.status(200).json({ data: { requesterResolutionIndicatedAt: updated.requesterResolutionIndicatedAt } });
   } catch {
@@ -916,13 +1065,9 @@ function validateCommentContent(raw: unknown): { error: string } | { content: st
   return { content };
 }
 
-// Requester (own Ticket only) or IT Staff (any Ticket) — not Administrator,
-// read-only on the workflow (Authorization Matrix, specification.md §4).
+// Requester (own Ticket only), IT Staff or Administrator (any Ticket) —
+// Lab 4's revised matrix gives the Administrator IT Staff behavior.
 app.post("/api/tickets/:id/comments", requireAuth, async (req: AuthedRequest, res: Response) => {
-  if (req.user!.role === "ADMINISTRATOR") {
-    res.status(403).json({ error: { message: "Forbidden." } });
-    return;
-  }
   const id = Number(req.params.id);
   const ticket = Number.isInteger(id) ? await getPrisma().ticket.findUnique({ where: { id } }) : null;
   if (!ticket || (req.user!.role === "REQUESTER" && ticket.requesterId !== req.user!.id)) {
@@ -1052,6 +1197,9 @@ app.get("/api/tickets/:id/notes", ...requireStaffRead, async (req: AuthedRequest
     res.status(500).json({ error: { message: "Unable to load notes" } });
   }
 });
+
+// Lab 4, Issue 23 — Actions Taken (docs/lab-04/api-spec.md).
+registerActionsTakenRoutes(app);
 
 // ---------------------------------------------------------------------------
 // Issue 38 — Administrator user management.

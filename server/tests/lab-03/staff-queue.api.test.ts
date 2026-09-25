@@ -71,7 +71,12 @@ describe("GET /api/staff/tickets — queue contract", () => {
   });
 
   it("STAFF-Q-04 status filter returns only matching Tickets", async () => {
-    const res = await request(app).get("/api/staff/tickets?status=RESOLVED&pageSize=50").set("Cookie", staffCookie);
+    // Scoped with search=TKT-9999 in Lab 4 (docs/lab-04/tests.md §3), for the
+    // STAFF-Q-05 reason: every run of the suites resolves more fixture
+    // Tickets, and after enough runs the seeded one fell off page 1.
+    const res = await request(app)
+      .get("/api/staff/tickets?status=RESOLVED&search=TKT-9999&pageSize=50")
+      .set("Cookie", staffCookie);
     expect(res.status).toBe(200);
     expect(ticketNumbers(res.body)).toContain("TKT-9999-000005");
     expect(res.body.data.every((t: { status: string }) => t.status === "RESOLVED")).toBe(true);
@@ -104,7 +109,12 @@ describe("GET /api/staff/tickets — queue contract", () => {
   });
 
   it("STAFF-Q-07 ownerId=<id> returns only that owner's Tickets", async () => {
-    const res = await request(app).get(`/api/staff/tickets?ownerId=${margaretId}&pageSize=50`).set("Cookie", staffCookie);
+    // Scoped with search=TKT-9999 in Lab 4 (docs/lab-04/tests.md §3): Lab 3's
+    // own claim tests add Margaret-owned fixtures on every run (51 of the 54
+    // that had pushed the seeded Tickets off page 1 when this broke).
+    const res = await request(app)
+      .get(`/api/staff/tickets?ownerId=${margaretId}&search=TKT-9999&pageSize=50`)
+      .set("Cookie", staffCookie);
     expect(res.status).toBe(200);
     expect(ticketNumbers(res.body)).toEqual(expect.arrayContaining(["TKT-9999-000002", "TKT-9999-000003"]));
     expect(res.body.data.every((t: { ticketOwnerId: number | null }) => t.ticketOwnerId === margaretId)).toBe(true);
