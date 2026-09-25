@@ -45,7 +45,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| UNIT-01 | Unit | BR-07 | Action status matrix lookup | Allowed targets per status; none for COMPLETED and CANCELLED | server/tests/lab-04/action-status.unit.test.ts | Pending |
+| UNIT-01 | Unit | BR-07 | Action status matrix lookup | Allowed targets per status; none for COMPLETED and CANCELLED | server/tests/lab-04/action-status.unit.test.ts | Pass |
 | UNIT-02 | Unit | BR-16 | `resolvedAt` rule for a transition | Set on → RESOLVED, kept on → CLOSED, cleared on → REOPENED, untouched otherwise | server/tests/lab-04/action-status.unit.test.ts | Pending |
 | UNIT-03 | Unit | BR-27 | Comma-separated `status` parser | Parses one or several statuses; rejects an unknown value by name | server/tests/lab-04/action-status.unit.test.ts | Pending |
 
@@ -53,37 +53,37 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| API-01 | API | FR-01 | IT Staff lists a Ticket's Actions Taken | 200, all actions, ordered by actionAt then id | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-02 | API | AC-10, BR-12 | Several actions with equal actionAt | Order is stable (id breaks ties) across two reads | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-03 | API | AC-01 | Create a valid Action Taken | 201, under the correct Ticket, creator = session user, approved assignee, version 1 | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-04 | API | AC-03, BR-03 | Create with a forged `performedById` | Saved performer is the session user | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-05 | API | AC-04, BR-05 | `followUpRequired: true`, no note (create and update) | 400 both times, nothing saved | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-06 | API | BR-05 | `followUpRequired: false` with a note | 201, stored note is null | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-07 | API | AC-05, BR-04 | Assign an inactive IT Staff user | 400 on create and on update | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-08 | API | AC-05, BR-04 | Assign a Requester | 400 | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-09 | API | FR-03 | Reassign to another active staff user, then unassign | 200 each, assignee updated then null | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-10 | API | BR-06 | Blank description, 4001-char text, invalid actionAt | 400 each | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-11 | API | AC-06, FR-05 | PLANNED → IN_PROGRESS → COMPLETED (with result) | 200 each, version increments | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-12 | API | AC-06, BR-08 | Complete without a result | 400, status unchanged | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-13 | API | AC-06, BR-07 | Cancel a PLANNED action | 200, CANCELLED | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-14 | API | AC-06, BR-07 | Transition outside the matrix (e.g. IN_PROGRESS → PLANNED) | 409 INVALID_ACTION_TRANSITION naming allowed targets | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-15 | API | AC-07, BR-09 | Any update to a COMPLETED or CANCELLED action | 409 ACTION_TERMINAL | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-16 | API | AC-14, BR-10 | Create or update an action on a RESOLVED / CLOSED / CANCELLED Ticket | 409 TICKET_NOT_ACTIVE | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-17 | API | AC-16, BR-20 | Update with a stale version | 409 STALE_UPDATE with current state; first change kept | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-18 | API | BR-20 | Update without `version` | 400 | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-19 | API | BR-11 | `DELETE /api/actions/:id` | No such route (404), action still present | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| API-20 | API | BR-02 | Action created by an IT Staff user who is not the Ticket Owner | 201 | server/tests/lab-04/actions-taken.api.test.ts | Pending |
+| API-01 | API | FR-01 | IT Staff lists a Ticket's Actions Taken | 200, all actions, ordered by actionAt then id | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-02 | API | AC-10, BR-12 | Several actions with equal actionAt | Order is stable (id breaks ties) across two reads | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-03 | API | AC-01 | Create a valid Action Taken | 201, under the correct Ticket, creator = session user, approved assignee, version 1 | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-04 | API | AC-03, BR-03 | Create with a forged `performedById` | Saved performer is the session user | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-05 | API | AC-04, BR-05 | `followUpRequired: true`, no note (create and update) | 400 both times, nothing saved | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-06 | API | BR-05 | `followUpRequired: false` with a note | 201, stored note is null | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-07 | API | AC-05, BR-04 | Assign an inactive IT Staff user | 400 on create and on update | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-08 | API | AC-05, BR-04 | Assign a Requester | 400 | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-09 | API | FR-03 | Reassign to another active staff user, then unassign | 200 each, assignee updated then null | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-10 | API | BR-06 | Blank description, 4001-char text, invalid actionAt | 400 each | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-11 | API | AC-06, FR-05 | PLANNED → IN_PROGRESS → COMPLETED (with result) | 200 each, version increments | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-12 | API | AC-06, BR-08 | Complete without a result | 400, status unchanged | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-13 | API | AC-06, BR-07 | Cancel a PLANNED action | 200, CANCELLED | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-14 | API | AC-06, BR-07 | Transition outside the matrix (e.g. IN_PROGRESS → PLANNED) | 409 INVALID_ACTION_TRANSITION naming allowed targets | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-15 | API | AC-07, BR-09 | Any update to a COMPLETED or CANCELLED action | 409 ACTION_TERMINAL | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-16 | API | AC-14, BR-10 | Create or update an action on a RESOLVED / CLOSED / CANCELLED Ticket | 409 TICKET_NOT_ACTIVE | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-17 | API | AC-16, BR-20 | Update with a stale version | 409 STALE_UPDATE with current state; first change kept | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-18 | API | BR-20 | Update without `version` | 400 | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-19 | API | BR-11 | `DELETE /api/actions/:id` | No such route (404), action still present | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| API-20 | API | BR-02 | Action created by an IT Staff user who is not the Ticket Owner | 201 | server/tests/lab-04/actions-taken.api.test.ts | Pass |
 
 ### Authorization — Actions Taken (`actions-taken.api.test.ts`)
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| AUTHZ-01 | Authorization | AC-08 | Requester POSTs an Action Taken on their own Ticket | 403, nothing created | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| AUTHZ-02 | Authorization | AC-08 | Requester PATCHes an Action Taken | 403, unchanged | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| AUTHZ-03 | Authorization | AC-09 | Requester lists Actions Taken of their own Ticket | 200, same fields | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| AUTHZ-04 | Authorization | AC-09, BR-16 (Lab 3) | Requester lists Actions Taken of another Requester's Ticket | 404 | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| AUTHZ-05 | Authorization | AC-11 | Administrator creates and completes an Action Taken | 201 then 200 | server/tests/lab-04/actions-taken.api.test.ts | Pending |
-| AUTHZ-06 | Authorization | BR-14 (Lab 3) | Every Actions Taken route with no session / tampered token | 401 | server/tests/lab-04/actions-taken.api.test.ts | Pending |
+| AUTHZ-01 | Authorization | AC-08 | Requester POSTs an Action Taken on their own Ticket | 403, nothing created | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| AUTHZ-02 | Authorization | AC-08 | Requester PATCHes an Action Taken | 403, unchanged | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| AUTHZ-03 | Authorization | AC-09 | Requester lists Actions Taken of their own Ticket | 200, same fields | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| AUTHZ-04 | Authorization | AC-09, BR-16 (Lab 3) | Requester lists Actions Taken of another Requester's Ticket | 404 | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| AUTHZ-05 | Authorization | AC-11 | Administrator creates and completes an Action Taken | 201 then 200 | server/tests/lab-04/actions-taken.api.test.ts | Pass |
+| AUTHZ-06 | Authorization | BR-14 (Lab 3) | Every Actions Taken route with no session / tampered token | 401 | server/tests/lab-04/actions-taken.api.test.ts | Pass |
 
 ### Workflow (`ticket-workflow.api.test.ts`)
 
@@ -154,12 +154,12 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| MIG-01 | Migration | §7 | Every pre-migration Ticket has `version = 1` | True for every row older than the migration | server/tests/lab-04/migration-regression.api.test.ts | Pending |
-| MIG-02 | Migration | §7 | Legacy RESOLVED/CLOSED Tickets got `resolvedAt = updatedAt` | True for every such row older than the migration | server/tests/lab-04/migration-regression.api.test.ts | Pending |
+| MIG-01 | Migration | §7 | Every pre-migration Ticket has `version = 1` | True for every row older than the migration | server/tests/lab-04/migration-regression.api.test.ts | Pass |
+| MIG-02 | Migration | §7 | Legacy RESOLVED/CLOSED Tickets got `resolvedAt = updatedAt` | True for every such row older than the migration | server/tests/lab-04/migration-regression.api.test.ts | Pass |
 | MIG-03 | Migration | AC-13 | A legacy Ticket (no actions) moves to RESOLVED | 200, not blocked | server/tests/lab-04/migration-regression.api.test.ts | Pending |
-| MIG-04 | Migration | §7 | Lab 1–3 data still reachable: a Lab 2 Ticket, its Attachments, comments, notes | Same content before/after | server/tests/lab-04/migration-regression.api.test.ts | Pending |
-| MIG-05 | Migration | §7 rollback | Rollback on a restored copy of the dump | Schema equals Lab 3 (`prisma migrate diff` empty), Lab 1–3 row counts unchanged | server/scripts/test-rollback.sh (output kept in this file) | Pending |
-| MIG-06 | Migration | §7 seed | Seed run twice | Same row counts after the second run | server/tests/lab-04/migration-regression.api.test.ts | Pending |
+| MIG-04 | Migration | §7 | Lab 1–3 data still reachable: a Lab 2 Ticket, its Attachments, comments, notes | Same content before/after | server/tests/lab-04/migration-regression.api.test.ts | Pass |
+| MIG-05 | Migration | §7 rollback | Rollback on a restored copy of the dump | Schema equals Lab 3 (`prisma migrate diff` empty), Lab 1–3 row counts unchanged | server/scripts/test-rollback.sh (output kept in this file) | Pass |
+| MIG-06 | Migration | §7 seed | Seed run twice | Same row counts after the second run | server/tests/lab-04/migration-regression.api.test.ts | Pass |
 | HARD-01 | API | AC-25, BR-28 | Same `Idempotency-Key` twice on POST action | One record; second response identical to the first | server/tests/lab-04/hardening.api.test.ts | Pending |
 | HARD-02 | API | AC-25, BR-28 | Same key twice on POST ticket / comment / note | One record each | server/tests/lab-04/hardening.api.test.ts | Pending |
 | HARD-03 | API | BR-28 | Same key used by two different users | Two independent records | server/tests/lab-04/hardening.api.test.ts | Pending |
@@ -287,3 +287,66 @@ same PR as the behavior change, and the test then asserts the new rule.
 ## 5. Final Results
 
 Filled in as each Issue lands, from real runs only.
+
+### Issue 23 — Actions Taken foundation
+
+**TDD.** The 42 Lab 4 tests below were written first and run before any
+implementation. They failed for the expected reasons: routes answering `404`,
+`src/actionStatus.ts` missing, `prisma.actionTaken` undefined, the
+`lab4_actions_taken` migration not applied. Two passed trivially at that point
+because they expect a `404` (AUTHZ-04, API-19); they become meaningful once the
+routes exist.
+
+**Migration.** Database dumped first
+(`db-backups/pre-actions-taken-migration-20260926-031538.dump`, gitignored). The
+SQL was generated with `prisma migrate diff` against the live database — purely
+additive, which also confirmed there was no drift from the Lab 3 migrations —
+plus the `resolvedAt` backfill, then applied with `prisma migrate deploy` (never
+`migrate dev`/`reset`). Row counts on the working database before and after:
+User 845, Ticket 2446, Attachment 1357, PublicComment 59, InternalNote 61 — identical.
+Backfill checks: 0 Tickets with `version ≠ 1`, 0 RESOLVED/CLOSED Tickets with
+`resolvedAt ≠ updatedAt`, 0 other Tickets with a `resolvedAt`.
+
+**MIG-05 rollback**, run on two scratch copies restored from that dump before the
+migration touched the working database (`server/scripts/test-rollback.sh`):
+
+```
+Lab 1-3 row counts before migration (User|Ticket|Attachment|PublicComment|InternalNote|Category|RelatedSystem): 845|2415|1357|59|61|4|7
+Applying migration `20260925201854_lab4_actions_taken`
+BEGIN / DROP TABLE ×3 / DROP TYPE / ALTER TABLE ×2 / DELETE 1 / COMMIT
+-- This is an empty migration.
+Lab 1-3 row counts after rollback: 845|2415|1357|59|61|4|7
+RESULT: PASS — schema identical to Lab 3, row counts unchanged, migration record removed
+```
+
+**Seed.** Run twice: `Seeded Actions Taken: 14 new` then `0 new, 14 already
+present`. Seeded actions cover all four statuses (PLANNED 3, IN_PROGRESS 2,
+COMPLETED 7, CANCELLED 2); Tickets with zero (#1, #8, #9), one (#2, #4, #6, #10,
+#12), and several (#3, #5, #7) actions; a PLANNED action on the OPEN Ticket #2 for
+the live resolution-gate demo; zero-data accounts `zoe.empty@example.com` and
+`zed.empty@toktickit.com`.
+
+**A real regression found and fixed during this Issue.** The first full run
+failed Lab 3's STAFF-Q-07 (`ownerId=<Margaret>` must list the seeded Tickets #2
+and #3 on page 1). Cause: the new Lab 4 fixtures defaulted every fixture Ticket's
+owner to Margaret, adding ~45 newer Margaret-owned Tickets per run and pushing the
+seeded ones off page 1. The Lab 3 test was not touched: Lab 4 fixtures are now
+unassigned by default, and the 97 fixture Tickets already created by those runs
+were unassigned. A second defect of the same kind was removed: API-16 first
+forced a Ticket to RESOLVED directly in the database, creating a
+"resolved with an open action" row the API makes impossible; it now reaches a
+non-active Ticket through the real status route (cancellation).
+
+**Results** (full suites, this branch):
+- Server: **208/208** (Lab 1–3: 166, Lab 4: 42), run twice in a row, both green;
+  `tsc --noEmit` clean.
+- Client: 62/62; `tsc --noEmit` clean.
+- Playwright (Lab 2–3): 17/17.
+- Manual check on the running dev server: Margaret lists Ticket #3's four seeded
+  actions in order with performer and assignee names; its owner Grace gets `200`
+  on the list and `403` on create; Ada (not the owner) gets `404` on the list and
+  `403` on create.
+
+**Covered:** FR-01–FR-05, BR-01–BR-12, BR-19, BR-20; AC-01, AC-03–AC-11,
+AC-14 (create/update side). Tests: UNIT-01, API-01–API-20, AUTHZ-01–AUTHZ-06,
+MIG-01, MIG-02, MIG-04, MIG-05, MIG-06.
