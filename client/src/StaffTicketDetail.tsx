@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
+import ActionsTaken from "./components/ActionsTaken.js";
 import CommentPanel from "./components/CommentPanel.js";
+import StatusHistory from "./components/StatusHistory.js";
 import { useAuth } from "./AuthContext.js";
 import {
+  ActionTaken,
+  ApiError,
   getStaffTicket,
   getStaffUsers,
   postComment,
@@ -16,7 +20,8 @@ import {
   StaffUser,
   TicketStatus,
 } from "./api.js";
-import { allowedTransitions, STATUS_LABELS, statusTone } from "./ticketStatus.js";
+import { STATUS_LABELS, statusTone } from "./ticketStatus.js";
+import { formatDateTime } from "./dates.js";
 
 type LoadState = "loading" | "loaded" | "error";
 
@@ -40,9 +45,24 @@ export default function StaffTicketDetail() {
   const [actionError, setActionError] = useState("");
   const [resolutionDraft, setResolutionDraft] = useState("");
   const [confirmingResolve, setConfirmingResolve] = useState(false);
+  // Lab 4 (ui-spec.md §4) — conflict feedback and the status announcement.
+  const [stale, setStale] = useState(false);
+  const [blockedIds, setBlockedIds] = useState<number[]>([]);
+  const [actions, setActions] = useState<ActionTaken[]>([]);
+  const [announcement, setAnnouncement] = useState("");
+  const [historyKey, setHistoryKey] = useState(0);
+
+  // Workflow writes run one at a time, each with the latest version the
+  // screen knows (from the previous write's response). Without this, a quick
+  // "change priority, then status" sent the second request with the version
+  // read before the first one landed, and the user conflicted with their
+  // own change (found by Lab 3's E2E-04 during Issue 25).
+  const versionRef = useRef<number | undefined>(undefined);
+  const writeQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   async function load() {
     const [t, users] = await Promise.all([getStaffTicket(Number(id)), getStaffUsers()]);
+    versionRef.current = t.version;
     setTicket(t);
     setStaffUsers(users);
     setResolutionDraft(t.resolutionSummary ?? "");
@@ -66,29 +86,62 @@ export default function StaffTicketDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function runAction(action: () => Promise<void>) {
+  function runAction(action: (version: number | undefined) => Promise<{ version?: number } | void>): Promise<boolean> {
+    const run = writeQueue.current.then(() => execute(action));
+    writeQueue.current = run;
+    return run;
+  }
+
+  async function execute(action: (version: number | undefined) => Promise<{ version?: number } | void>): Promise<boolean> {
     setActionError("");
+    setStale(false);
+    setBlockedIds([]);
     try {
-      await action();
+      const result = await action(versionRef.current);
+      if (result && typeof result.version === "number") versionRef.current = result.version;
       await load();
+      return true;
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Unable to save that change.");
+      if (err instanceof ApiError && err.code === "STALE_UPDATE") {
+        setStale(true);
+      } else if (err instanceof ApiError && err.code === "RESOLUTION_BLOCKED") {
+        setBlockedIds(Array.isArray(err.details.blockingActionIds) ? (err.details.blockingActionIds as number[]) : []);
+      } else {
+        setActionError(err instanceof Error ? err.message : "Unable to save that change.");
+      }
+      return false;
     }
+  }
+
+  async function reload() {
+    setStale(false);
+    await load();
+    setHistoryKey((k) => k + 1);
+  }
+
+  async function changeStatus(value: TicketStatus, resolution?: string) {
+    if (!ticket) return false;
+    const ok = await runAction((version) => setTicketStatus(ticket.id, value, resolution, version));
+    if (ok) {
+      setAnnouncement(`Status changed to ${STATUS_LABELS[value]}`);
+      setHistoryKey((k) => k + 1);
+    }
+    return ok;
   }
 
   function handleClaim() {
     if (!ticket || !user) return;
-    runAction(() => setTicketOwner(ticket.id, user.id));
+    runAction((version) => setTicketOwner(ticket.id, user.id, version));
   }
 
   function handleOwnerChange(value: string) {
     if (!ticket) return;
-    runAction(() => setTicketOwner(ticket.id, value === "" ? null : Number(value)));
+    runAction((version) => setTicketOwner(ticket.id, value === "" ? null : Number(value), version));
   }
 
   function handlePriorityChange(value: RequestedPriority) {
     if (!ticket) return;
-    runAction(() => setTicketItPriority(ticket.id, value));
+    runAction((version) => setTicketItPriority(ticket.id, value, version));
   }
 
   function handleStatusChange(value: TicketStatus) {
@@ -97,12 +150,12 @@ export default function StaffTicketDetail() {
       setConfirmingResolve(true);
       return;
     }
-    runAction(() => setTicketStatus(ticket.id, value));
+    changeStatus(value);
   }
 
   function submitResolution() {
     if (!ticket) return;
-    runAction(() => setTicketStatus(ticket.id, "RESOLVED", resolutionDraft)).then(() => setConfirmingResolve(false));
+    changeStatus("RESOLVED", resolutionDraft).then(() => setConfirmingResolve(false));
   }
 
   if (state === "loading") {
@@ -116,10 +169,13 @@ export default function StaffTicketDetail() {
     );
   }
 
-  const statusOptions = [ticket.status, ...allowedTransitions(ticket.status)];
+  // The backend's own matrix row — never a client-side copy (api-spec.md).
+  const statusOptions = [ticket.status, ...ticket.allowedTransitions];
+  // A blocking action completed or cancelled since the refusal stops being named.
+  const stillBlocking = actions.filter((a) => blockedIds.includes(a.id) && (a.status === "PLANNED" || a.status === "IN_PROGRESS"));
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 960 }}>
       <div
         className="p-3 mb-4 rounded"
         style={{ background: "var(--zg-readonly-bg)", border: "1px solid var(--zg-surface-border)" }}
@@ -129,7 +185,7 @@ export default function StaffTicketDetail() {
           <Badge tone={statusTone(ticket.status)}>{STATUS_LABELS[ticket.status]}</Badge>
         </div>
         <small className="text-muted">
-          {ticket.categoryName} · Created {new Date(ticket.createdAt).toLocaleString()}
+          {ticket.categoryName} · Created {formatDateTime(ticket.createdAt)}
         </small>
       </div>
 
@@ -138,6 +194,17 @@ export default function StaffTicketDetail() {
           {actionError}
         </p>
       )}
+      {stale && (
+        <div role="alert" className="p-2 mb-3 rounded small" style={{ background: "var(--zg-warning-bg)", color: "var(--zg-warning-text)" }}>
+          Someone else changed this ticket. Reload to see the latest version.{" "}
+          <button type="button" className="btn btn-sm btn-outline-secondary ms-2" onClick={reload}>
+            Reload
+          </button>
+        </div>
+      )}
+      <p aria-live="polite" className="small mb-2" style={{ color: "var(--zg-secondary)", minHeight: "1.25rem" }}>
+        {announcement}
+      </p>
 
       <div className="row mb-4 g-3">
         <div className="col-sm-6">
@@ -206,6 +273,18 @@ export default function StaffTicketDetail() {
           {ticket.requesterResolutionIndicatedAt && (
             <Badge tone="pale">Requester indicated this is resolved</Badge>
           )}
+          {stillBlocking.length > 0 && (
+            <div role="alert" className="small mt-2 p-2 rounded" style={{ background: "var(--zg-warning-bg)", color: "var(--zg-warning-text)" }}>
+              <p className="mb-1">This ticket still has open actions. Complete or cancel them before resolving.</p>
+              <ul className="mb-0 ps-3">
+                {stillBlocking.map((a) => (
+                  <li key={a.id}>
+                    <a href={`#action-${a.id}`}>{a.description}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
@@ -268,11 +347,26 @@ export default function StaffTicketDetail() {
       )}
 
       <div className="mb-4">
+        <ActionsTaken
+          ticketId={ticket.id}
+          ticketStatus={ticket.status}
+          mode="staff"
+          staffUsers={staffUsers}
+          highlightIds={stillBlocking.map((a) => a.id)}
+          onActionsLoaded={setActions}
+        />
+      </div>
+
+      <div className="mb-4">
+        <StatusHistory ticketId={ticket.id} refreshKey={historyKey} />
+      </div>
+
+      <div className="mb-4">
         <CommentPanel
           variant="public"
           entries={ticket.publicComments}
-          onPost={async (content) => {
-            await postComment(ticket.id, content);
+          onPost={async (content, key) => {
+            await postComment(ticket.id, content, key);
             await load();
           }}
         />
@@ -282,8 +376,8 @@ export default function StaffTicketDetail() {
         <CommentPanel
           variant="internal"
           entries={ticket.internalNotes}
-          onPost={async (content) => {
-            await postNote(ticket.id, content);
+          onPost={async (content, key) => {
+            await postNote(ticket.id, content, key);
             await load();
           }}
         />
