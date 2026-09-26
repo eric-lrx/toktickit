@@ -1,4 +1,8 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
+import { useIdempotencyKey } from "../idempotencyKey.js";
+import { formatDateTime } from "../dates.js";
+
+const ROLE_LABEL: Record<string, string> = { REQUESTER: "Requester", IT_STAFF: "IT Staff", ADMINISTRATOR: "Administrator" };
 
 export interface CommentEntry {
   id: number;
@@ -11,7 +15,8 @@ export interface CommentEntry {
 interface Props {
   variant: "public" | "internal";
   entries: CommentEntry[];
-  onPost: (content: string) => Promise<void>;
+  // Lab 4 (BR-28) — the key is generated here, once per submission.
+  onPost: (content: string, idempotencyKey: string) => Promise<void>;
 }
 
 // ui-spec.md §5 — Public Comments and Internal Notes are two visually
@@ -23,18 +28,23 @@ export default function CommentPanel({ variant, entries, onPost }: Props) {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+  const postingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!draft.trim()) return;
+    if (!draft.trim() || postingRef.current) return;
+    postingRef.current = true;
     setPosting(true);
     setError("");
     try {
-      await onPost(draft.trim());
+      await onPost(draft.trim(), idempotencyKey.current());
+      idempotencyKey.rotate();
       setDraft("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to post. Please try again.");
     } finally {
+      postingRef.current = false;
       setPosting(false);
     }
   }
@@ -66,7 +76,7 @@ export default function CommentPanel({ variant, entries, onPost }: Props) {
             </p>
             <small className="text-muted">
               {entry.authorName}
-              {entry.authorRole ? ` — ${entry.authorRole}` : ""} · {new Date(entry.createdAt).toLocaleString()}
+              {entry.authorRole ? ` — ${ROLE_LABEL[entry.authorRole] ?? entry.authorRole}` : ""} · {formatDateTime(entry.createdAt)}
             </small>
           </li>
         ))}

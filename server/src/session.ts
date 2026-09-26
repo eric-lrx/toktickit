@@ -131,6 +131,7 @@ export function requireRole(...allowedRoles: Role[]) {
 const PASSWORD_GATE_EXEMPT_PATHS = new Set<string>([
   "/api/auth/login",
   "/api/auth/me",
+  "/api/auth/session",
   "/api/auth/change-password",
   "/api/auth/logout",
 ]);

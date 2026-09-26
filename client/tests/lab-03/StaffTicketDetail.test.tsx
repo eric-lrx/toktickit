@@ -33,6 +33,11 @@ const baseTicket: StaffTicketDetailType = {
   updatedAt: "2026-09-01T00:00:00.000Z",
   resolutionSummary: null,
   requesterResolutionIndicatedAt: null,
+  // Lab 4 contract fields (docs/lab-04/tests.md §3): the API now returns the
+  // matrix row for the current status, which the UI renders as-is.
+  version: 1,
+  resolvedAt: null,
+  allowedTransitions: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
   attachments: [],
   publicComments: [],
   internalNotes: [],
@@ -62,13 +67,14 @@ describe("StaffTicketDetail", () => {
 
   it("UI-14 calls the owner endpoint with the current user when Claim is clicked", async () => {
     vi.spyOn(api, "getStaffTicket").mockResolvedValue({ ...baseTicket, ticketOwnerId: null, ticketOwnerName: null });
-    const ownerSpy = vi.spyOn(api, "setTicketOwner").mockResolvedValue(undefined);
+    const ownerSpy = vi.spyOn(api, "setTicketOwner").mockResolvedValue({ version: 2 });
     renderDetail();
 
     const claimButton = await screen.findByRole("button", { name: /claim/i });
     await userEvent.click(claimButton);
 
-    expect(ownerSpy).toHaveBeenCalledWith(1, CURRENT_USER.id);
+    // Lab 4 (BR-21, docs/lab-04/tests.md §3): the claim also sends the version it read.
+    expect(ownerSpy).toHaveBeenCalledWith(1, CURRENT_USER.id, 1);
   });
 
   it("does not show a Claim button once the Ticket has an owner", async () => {
@@ -89,7 +95,7 @@ describe("StaffTicketDetail", () => {
   });
 
   it("UI-15 offers no transitions when the Ticket is Cancelled (terminal)", async () => {
-    vi.spyOn(api, "getStaffTicket").mockResolvedValue({ ...baseTicket, status: "CANCELLED" });
+    vi.spyOn(api, "getStaffTicket").mockResolvedValue({ ...baseTicket, status: "CANCELLED", allowedTransitions: [] });
     renderDetail();
 
     const statusSelect = await screen.findByLabelText(/^status/i);

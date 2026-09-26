@@ -27,21 +27,23 @@ describe("GET /api/related-systems", () => {
   });
 });
 
-describe("GET /api/requesters", () => {
-  it("returns active requesters and excludes the seeded inactive one", async () => {
+// Updated in Lab 4 (docs/lab-04/tests.md §3, specification.md BR-31): the
+// route behind Lab 2's Development Requester selector answered without any
+// session and listed every active Requester's name and email. The selector
+// went away in Lab 3; Lab 4 removes the route itself, so these two tests now
+// pin that it stays gone and leaks nothing.
+describe("GET /api/requesters (removed in Lab 4)", () => {
+  it("no longer answers with a Requester list", async () => {
     const res = await request(app).get("/api/requesters");
-    expect(res.status).toBe(200);
-    const emails = res.body.map((r: { email: string }) => r.email);
-    expect(emails).toContain("ada.lovelace@example.com");
-    expect(emails).not.toContain("ivy.inactive@example.com");
+    expect(res.status).toBe(404);
+    expect(Array.isArray(res.body)).toBe(false);
   });
 
-  // Lab 3 (Issue 32) regression: the User table now also holds IT Staff and
-  // Administrator rows. This route must stay scoped to role: "REQUESTER".
-  it("never includes a seeded IT Staff or Administrator account", async () => {
+  it("never exposes any account email, Requester or staff", async () => {
     const res = await request(app).get("/api/requesters");
-    const emails = res.body.map((r: { email: string }) => r.email);
-    expect(emails).not.toContain("margaret.hamilton@toktickit.com");
-    expect(emails).not.toContain("barbara.liskov@toktickit.com");
+    const raw = JSON.stringify(res.body) + (res.text ?? "");
+    expect(raw).not.toContain("ada.lovelace@example.com");
+    expect(raw).not.toContain("margaret.hamilton@toktickit.com");
+    expect(raw).not.toContain("barbara.liskov@toktickit.com");
   });
 });

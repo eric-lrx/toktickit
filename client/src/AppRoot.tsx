@@ -8,13 +8,16 @@ import MyTickets from "./MyTickets.js";
 import RequesterTicketDetail from "./RequesterTicketDetail.js";
 import StaffTicketQueue from "./StaffTicketQueue.js";
 import StaffTicketDetail from "./StaffTicketDetail.js";
+import StaffDashboard from "./StaffDashboard.js";
+import RequesterDashboard from "./RequesterDashboard.js";
 import UserManagement from "./UserManagement.js";
 import { Role } from "./api.js";
 
 const ROLE_HOME: Record<Role, string> = {
-  REQUESTER: "/tickets",
-  IT_STAFF: "/queue",
-  ADMINISTRATOR: "/admin/users",
+  REQUESTER: "/dashboard",
+  // Lab 4 (FR-15) — the dashboard is the staff roles' starting point.
+  IT_STAFF: "/dashboard",
+  ADMINISTRATOR: "/dashboard",
 };
 
 // Issue 33 — every screen lives under one Router now (Login and Change
@@ -69,6 +72,7 @@ function AuthenticatedApp() {
         <Route path="/" element={<Navigate to={ROLE_HOME[user.role]} replace />} />
         {user.role === "REQUESTER" && (
           <>
+            <Route path="/dashboard" element={<RequesterDashboard />} />
             <Route path="/tickets" element={<MyTickets />} />
             <Route path="/tickets/new" element={<CreateTicket />} />
             <Route path="/tickets/:id" element={<RequesterTicketDetail />} />
@@ -76,6 +80,7 @@ function AuthenticatedApp() {
         )}
         {(user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") && (
           <>
+            <Route path="/dashboard" element={<StaffDashboard />} />
             <Route path="/queue" element={<StaffTicketQueue />} />
             <Route path="/queue/:id" element={<StaffTicketDetail />} />
           </>
