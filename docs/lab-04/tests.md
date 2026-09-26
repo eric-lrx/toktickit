@@ -200,27 +200,28 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| STYLE-01 | UI style | ui-spec §2 | Metric cards use theme tokens | Surface/border/text from `--zg-*` values | client/tests/lab-04/zen-green.style.test.tsx | Pending |
+| STYLE-01 | UI style | ui-spec §2 | Metric cards use theme tokens (moved to a browser test: jsdom does not load `theme.css`) | Computed surface/border/text equal the `--zg-*` values | e2e/lab-04/responsive.spec.ts | Pass |
 | STYLE-02 | UI style | ui-spec §3 | Action status badges for the 4 statuses | Distinct classes and text labels | client/tests/lab-04/zen-green.style.test.tsx | Pass |
 | STYLE-03 | UI style | ui-spec §3, AC-29 | Actions Taken vs Internal Notes on staff detail | Different background/border and labels | client/tests/lab-04/zen-green.style.test.tsx | Pass |
 | STYLE-04 | UI style | ui-spec §3 | Action form editable vs read-only fields | `--zg-field-bg` vs `--zg-readonly-bg` | client/tests/lab-04/zen-green.style.test.tsx | Pass |
-| STYLE-05 | UI style | ui-spec §7 | Focus indicator (moved to a browser test: jsdom does not evaluate `:focus-visible`) | 3px `--zg-primary` outline on keyboard focus | e2e/lab-04/responsive.spec.ts | Pending |
+| STYLE-05 | UI style | ui-spec §7 | Focus indicator (moved to a browser test: jsdom does not evaluate `:focus-visible`) | 3px `--zg-primary` outline on keyboard focus | e2e/lab-04/responsive.spec.ts | Pass |
 
 ### Responsive and E2E (`e2e/lab-04/`)
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| RESP-01 | Responsive | ui-spec §2 | Both dashboards at 375 / 768 / 1280 | Card grid per breakpoint, no horizontal scroll; screenshots | e2e/lab-04/responsive.spec.ts | Pending |
-| RESP-02 | Responsive | ui-spec §3 | Actions Taken area at 375 / 768 / 1280 | Cards / reduced table / table, no horizontal scroll; screenshots | e2e/lab-04/responsive.spec.ts | Pending |
-| E2E-01 | E2E | AC-01, AC-06, AC-10 | IT Staff adds three actions to one Ticket, assigns, edits, starts, completes, cancels | All visible in order with final statuses | e2e/lab-04/actions-taken-flow.spec.ts | Pending |
-| E2E-02 | E2E | AC-05 | Assigning an inactive user from the form | Error under Assignee, nothing saved | e2e/lab-04/actions-taken-flow.spec.ts | Pending |
-| E2E-03 | E2E | AC-09, AC-29 | Requester opens the same Ticket | Actions Taken read-only, Internal Note absent | e2e/lab-04/actions-taken-flow.spec.ts | Pending |
-| E2E-04 | E2E | AC-12 | Resolving with an open action on screen | Blocked message pointing at the action; status unchanged | e2e/lab-04/ticket-resolution.spec.ts | Pending |
-| E2E-05 | E2E | AC-12 | Same Ticket, direct API call from the test's request context | 409 RESOLUTION_BLOCKED | e2e/lab-04/ticket-resolution.spec.ts | Pending |
-| E2E-06 | E2E | AC-13, AC-15 | Complete the action, resolve, close | Succeeds; history shows every step | e2e/lab-04/ticket-resolution.spec.ts | Pending |
-| E2E-07 | E2E | AC-19, AC-21 | IT Staff dashboard card → Queue | Queue total equals the card count | e2e/lab-04/dashboards.spec.ts | Pending |
-| E2E-08 | E2E | AC-02, AC-21 | Requester dashboard card → My Tickets | Filtered list total equals the card count; only own Tickets | e2e/lab-04/dashboards.spec.ts | Pending |
-| E2E-09 | E2E | AC-20 | Zero-data seeded users log in | Zero cards; drill-down reaches no-results | e2e/lab-04/dashboards.spec.ts | Pending |
+| RESP-01 | Responsive | ui-spec §2 | Both dashboards at 375 / 768 / 1280 | Card grid per breakpoint, no horizontal scroll; screenshots | e2e/lab-04/responsive.spec.ts | Pass |
+| RESP-02 | Responsive | ui-spec §3 | Actions Taken area at 375 / 768 / 1280 | Cards / reduced table / table, no horizontal scroll; screenshots | e2e/lab-04/responsive.spec.ts | Pass |
+| A11Y-01 | Accessibility (added in Issue 29) | ui-spec §9 | Create an Action and use the cancel dialog with the keyboard only | Saved; dialog focus starts inside, Escape closes, focus returns | e2e/lab-04/responsive.spec.ts | Pass |
+| E2E-01 | E2E | AC-01, AC-06, AC-10 | IT Staff adds three actions to one Ticket, assigns, edits, starts, completes, cancels | All visible in order with final statuses | e2e/lab-04/actions-taken-flow.spec.ts | Pass |
+| E2E-02 | E2E | AC-05 | Assigning an inactive user from the form | Error under Assignee, nothing saved | e2e/lab-04/actions-taken-flow.spec.ts | Pass |
+| E2E-03 | E2E | AC-09, AC-29 | Requester opens the same Ticket | Actions Taken read-only, Internal Note absent | e2e/lab-04/actions-taken-flow.spec.ts | Pass |
+| E2E-04 | E2E | AC-12 | Resolving with an open action on screen | Blocked message pointing at the action; status unchanged | e2e/lab-04/ticket-resolution.spec.ts | Pass |
+| E2E-05 | E2E | AC-12 | Same Ticket, direct API call from the test's request context | 409 RESOLUTION_BLOCKED | e2e/lab-04/ticket-resolution.spec.ts | Pass |
+| E2E-06 | E2E | AC-13, AC-15 | Complete the action, resolve, close | Succeeds; history shows every step | e2e/lab-04/ticket-resolution.spec.ts | Pass |
+| E2E-07 | E2E | AC-19, AC-21 | IT Staff dashboard card → Queue | Queue total equals the card count | e2e/lab-04/dashboards.spec.ts | Pass |
+| E2E-08 | E2E | AC-02, AC-21 | Requester dashboard card → My Tickets | Filtered list total equals the card count; only own Tickets | e2e/lab-04/dashboards.spec.ts | Pass |
+| E2E-09 | E2E | AC-20 | Zero-data seeded users log in | Zero cards; drill-down reaches no-results | e2e/lab-04/dashboards.spec.ts | Pass |
 | E2E-10 | E2E | AC-27 | Visual regression walk: authentication, My Tickets, Ticket Detail, Attachments, Public Comments, IT Staff functions, Internal Notes, User Management | Each screen works; screenshots saved | e2e/lab-04/regression.spec.ts | Pass |
 
 ## 3. Regression — Labs 1 to 3
@@ -229,9 +230,9 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| REG-01 | Regression | AC-27 | All Lab 1–3 server tests | All pass (166 before this sprint) | server/tests/lab-01, lab-02, lab-03 | Pending |
-| REG-02 | Regression | AC-27 | All Lab 1–3 client tests | All pass (62 before this sprint) | client/tests/lab-01, lab-02, lab-03 | Pending |
-| REG-03 | Regression | AC-27 | All Lab 2–3 Playwright tests | All pass (17 before this sprint) | e2e/lab-02, e2e/lab-03 | Pending |
+| REG-01 | Regression | AC-27 | All Lab 1–3 server tests | All pass (166 before this sprint) | server/tests/lab-01, lab-02, lab-03 | Pass (166/166 on the final branch; re-run from `main` after the release merge) |
+| REG-02 | Regression | AC-27 | All Lab 1–3 client tests | All pass (62 before this sprint) | client/tests/lab-01, lab-02, lab-03 | Pass (62/62 on the final branch; re-run from `main` after the release merge) |
+| REG-03 | Regression | AC-27 | All Lab 2–3 Playwright tests | All pass (17 before this sprint) | e2e/lab-02, e2e/lab-03 | Pass (17/17 on the final branch; re-run from `main` after the release merge) |
 
 Baseline recorded on 2026-09-26 from `main` (`a46958b`) before any Lab 4 change:
 166/166 server, 62/62 client, 17/17 E2E, `tsc --noEmit` clean in both packages.
@@ -614,3 +615,66 @@ Management.
 
 **Covered:** FR-16–FR-21, BR-28–BR-31; AC-25–AC-28. Tests: HARD-01–HARD-07,
 UI-21–UI-23, E2E-10.
+
+
+### Issue 29 — E2E, visual inspection and release
+
+**New specs.** `actions-taken-flow.spec.ts` (E2E-01–E2E-03),
+`ticket-resolution.spec.ts` (E2E-04–E2E-06), `dashboards.spec.ts`
+(E2E-07–E2E-09), and `responsive.spec.ts` (RESP-01, RESP-02, STYLE-01, STYLE-05,
+A11Y-01). All 15 passed on their first run.
+- **Isolation by design.** Specs that compare a card with a list use disposable
+  accounts created through the Administrator API, with a known number of
+  Tickets. The E2E specs run in parallel on one shared database, and another test
+  cannot move those counts.
+- **E2E-02 races the assignee for real.** A temporary IT Staff account is selected
+  in the form, the Administrator deactivates it through the API, and then Save is
+  pressed. The server rejects the assignee and the form shows why, under
+  Assignee.
+- **Two tests moved to a browser.** STYLE-01 and STYLE-05 run in the browser
+  because jsdom neither loads `theme.css` nor evaluates `:focus-visible`.
+
+**Found and fixed during visual inspection**
+- *Contrast.* The warning badge text was 3.93:1 on its background, below WCAG AA
+  for small text since Lab 2. `--zg-warning-text` is now `#8f5b00` (5.02:1).
+- *Demo pollution.* E2E-01 left an in-progress action on Margaret's dashboard on
+  every run. It now completes that action, and the leftovers from earlier runs
+  were cancelled.
+
+**Screenshots** (`artifacts/lab-04/screenshots/`):
+- `staff-dashboard/` and `requester-dashboard/` at desktop, tablet and mobile,
+  plus keyboard focus, a fresh Requester, and zero metrics;
+- `actions-taken/` at three widths, several actions on one Ticket, the
+  inactive-assignee rejection, and the Requester's read-only view;
+- `ticket-workflow/`: the resolution gate on screen, and a resolved-then-closed
+  Ticket with its history;
+- `regression/` from Issue 28.
+
+## 6. Final results
+
+Final campaign on `feature/29-e2e-and-visual`, the complete stack before merge.
+Full output kept from the runs.
+
+| Level | Where | Result |
+|---|---|---|
+| Unit | server/tests/lab-04/action-status.unit.test.ts | 7/7 |
+| API / integration, authorization, workflow, migration, performance-smoke | server/tests/lab-04/*.test.ts | 101/101 total for Lab 4 server tests |
+| Regression — server | server/tests/lab-01..03 | 166/166 (the pre-Lab-4 baseline was 166) |
+| UI component + UI style | client/tests/lab-04 | 39/39 |
+| Regression — client | client/tests/lab-01..03 | 62/62 (baseline 62) |
+| E2E + responsive + accessibility | e2e/lab-04 | 16/16 |
+| Regression — E2E | e2e/lab-02, e2e/lab-03 | 17/17 (baseline 17) |
+| Typecheck | `tsc --noEmit`, server and client | clean |
+
+Totals: server 267/267, client 101/101, Playwright 33/33 on three consecutive runs.
+
+Still to do after the merges. Merge order: #63 → #64 → #65 → #66 → #67 → #68 →
+#69 → the Issue 29 PR into `lab4-staging`, then the release PR `lab4-staging →
+main`. It cannot be opened before, because the two branches are identical until
+the first merge. Then re-run all three suites from `main` and record them here as
+REG-01–REG-03's final evidence.
+
+Known open items, recorded rather than hidden:
+- One Lab 3 E2E-02 failure in 30 full runs after its root-cause fix (Issue 28),
+  never since in 7 further full runs, and no trace captured.
+- One Lab 3 CN-07 `401` in a full server run, never reproduced in 22 later runs.
