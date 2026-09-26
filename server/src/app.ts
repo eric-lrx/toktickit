@@ -302,6 +302,17 @@ app.get("/api/tickets", ...requireRequester, async (req: AuthedRequest, res: Res
     where.requestedPriority = req.query.requestedPriority as "LOW" | "MEDIUM" | "HIGH";
   }
 
+  // Lab 4 (BR-27) — the Requester dashboard's drill-down: one status or a
+  // comma-separated list, always on top of the session-owned scope above.
+  if (req.query.status !== undefined) {
+    const parsed = parseStatusList(String(req.query.status));
+    if ("error" in parsed) {
+      res.status(400).json({ error: { message: parsed.error } });
+      return;
+    }
+    where.status = parsed.statuses.length === 1 ? parsed.statuses[0] : { in: parsed.statuses };
+  }
+
   try {
     const [total, tickets] = await Promise.all([
       getPrisma().ticket.count({ where }),
