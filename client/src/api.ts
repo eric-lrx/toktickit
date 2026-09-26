@@ -431,9 +431,10 @@ export async function getStaffUsers(): Promise<StaffUser[]> {
 
 export interface StaffQueueQuery {
   search?: string;
-  status?: TicketStatus;
+  // One status, or a comma-separated list (Lab 4 drill-down, BR-27).
+  status?: string;
   itPriority?: RequestedPriority;
-  ownerId?: number | "unassigned";
+  ownerId?: number | string;
   categoryId?: number;
   sort?: "createdAt" | "updatedAt" | "itPriority" | "ticketNumber";
   order?: "asc" | "desc";
@@ -778,4 +779,47 @@ export async function getStatusHistory(ticketId: number): Promise<StatusChange[]
   if (!res.ok) throw await toApiError(res, "Unable to load the status history.");
   const json = await res.json();
   return json.data;
+}
+
+// Lab 4, Issues 26–27 — dashboards (docs/lab-04/api-spec.md).
+export interface DashboardMetric {
+  key: string;
+  label: string;
+  count: number;
+  drillDown: { path: string; query?: Record<string, string> };
+}
+
+export interface StaffDashboardData {
+  metrics: DashboardMetric[];
+  myOpenActions: {
+    total: number;
+    items: { id: number; ticketId: number; ticketNumber: string; description: string; status: ActionStatus; actionAt: string }[];
+  };
+  recentTickets: {
+    id: number;
+    ticketNumber: string;
+    summary: string;
+    status: TicketStatus;
+    itPriority: RequestedPriority;
+    ticketOwnerName: string | null;
+    updatedAt: string;
+  }[];
+  accounts?: { active: number; inactive: number };
+}
+
+async function getDashboard<T>(path: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { credentials: "include" });
+  } catch (err) {
+    console.error(err);
+    throw new ApiError(0, "Dashboard data could not be loaded.");
+  }
+  if (!res.ok) throw await toApiError(res, "Dashboard data could not be loaded.");
+  const json = await res.json();
+  return json.data;
+}
+
+export function getStaffDashboard(): Promise<StaffDashboardData> {
+  return getDashboard<StaffDashboardData>("/api/dashboard/staff");
 }

@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
-import { getStaffQueue, RequestedPriority, StaffTicket, TicketStatus } from "./api.js";
+import { getStaffQueue, getStaffUsers, RequestedPriority, StaffTicket, StaffUser } from "./api.js";
 import { STATUS_LABELS, STATUSES, statusTone } from "./ticketStatus.js";
 
 type LoadState = "loading" | "loaded" | "forbidden" | "error";
 type SortField = "createdAt" | "updatedAt" | "itPriority" | "ticketNumber";
 
 const PAGE_SIZE = 10;
+// Lab 4 — the dashboards' "active" drill-down set (specification.md §5.1).
+const ACTIVE = "NEW,OPEN,IN_PROGRESS,WAITING_FOR_REQUESTER,RESOLVED,REOPENED";
 
 function priorityTone(priority: RequestedPriority): "pale" | "warning" | "danger" {
   if (priority === "HIGH") return "danger";
@@ -26,18 +28,37 @@ export default function StaffTicketQueue() {
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(1);
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<TicketStatus | "">("");
-  const [itPriority, setItPriority] = useState<RequestedPriority | "">("");
+  // Lab 4 — filters start from the URL so a dashboard card lands on exactly
+  // its own filtered list (BR-27), and stay in the URL as they change.
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState(params.get("search") ?? "");
+  const [status, setStatus] = useState(params.get("status") ?? "");
+  const [itPriority, setItPriority] = useState<RequestedPriority | "">((params.get("itPriority") as RequestedPriority | null) ?? "");
+  // Owner filter (Lab 3 ui-spec §4 listed it; the Lab 3 screen never had it).
+  const [ownerId, setOwnerId] = useState(params.get("ownerId") ?? "");
+  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [sort, setSort] = useState<SortField>("updatedAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [reloadToken, setReloadToken] = useState(0);
 
-  const filtersActive = Boolean(search.trim() || status || itPriority);
+  const filtersActive = Boolean(search.trim() || status || itPriority || ownerId);
+
+  useEffect(() => {
+    getStaffUsers()
+      .then(setStaffUsers)
+      .catch(() => setStaffUsers([]));
+  }, []);
 
   useEffect(() => {
     setPage(1);
-  }, [search, status, itPriority]);
+    const next = new URLSearchParams();
+    if (search.trim()) next.set("search", search.trim());
+    if (status) next.set("status", status);
+    if (itPriority) next.set("itPriority", itPriority);
+    if (ownerId) next.set("ownerId", ownerId);
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, status, itPriority, ownerId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +67,7 @@ export default function StaffTicketQueue() {
       search: search.trim() || undefined,
       status: status || undefined,
       itPriority: itPriority || undefined,
+      ownerId: ownerId || undefined,
       sort,
       order,
       page,
@@ -67,13 +89,16 @@ export default function StaffTicketQueue() {
     return () => {
       cancelled = true;
     };
-  }, [search, status, itPriority, sort, order, page, reloadToken]);
+  }, [search, status, itPriority, ownerId, sort, order, page, reloadToken]);
 
   function clearFilters() {
     setSearch("");
     setStatus("");
     setItPriority("");
+    setOwnerId("");
   }
+
+  const isKnownStatus = status === "" || status === ACTIVE || STATUSES.includes(status as (typeof STATUSES)[number]);
 
   return (
     <div>
@@ -99,9 +124,11 @@ export default function StaffTicketQueue() {
               id="statusFilter"
               className="form-select"
               value={status}
-              onChange={(e) => setStatus(e.target.value as TicketStatus | "")}
+              onChange={(e) => setStatus(e.target.value)}
             >
               <option value="">All</option>
+              <option value={ACTIVE}>Active (not closed or cancelled)</option>
+              {!isKnownStatus && <option value={status}>Several statuses</option>}
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {STATUS_LABELS[s]}
@@ -123,6 +150,23 @@ export default function StaffTicketQueue() {
               <option value="LOW">Low</option>
               <option value="MEDIUM">Medium</option>
               <option value="HIGH">High</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="ownerFilter" className="form-label small fw-semibold mb-1">
+              Owner
+            </label>
+            <select id="ownerFilter" className="form-select" value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              <option value="">All</option>
+              <option value="unassigned">Unassigned</option>
+              {staffUsers.map((u) => (
+                <option key={u.id} value={String(u.id)}>
+                  {u.name}
+                </option>
+              ))}
+              {ownerId && ownerId !== "unassigned" && !staffUsers.some((u) => String(u.id) === ownerId) && (
+                <option value={ownerId}>Selected owner</option>
+              )}
             </select>
           </div>
           <div>

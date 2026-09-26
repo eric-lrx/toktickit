@@ -47,7 +47,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 |---|---|---|---|---|---|---|
 | UNIT-01 | Unit | BR-07 | Action status matrix lookup | Allowed targets per status; none for COMPLETED and CANCELLED | server/tests/lab-04/action-status.unit.test.ts | Pass |
 | UNIT-02 | Unit | BR-16 | `resolvedAt` rule for a transition | Set on → RESOLVED, kept on → CLOSED, cleared on → REOPENED, untouched otherwise | server/tests/lab-04/action-status.unit.test.ts | Pass |
-| UNIT-03 | Unit | BR-27 | Comma-separated `status` parser | Parses one or several statuses; rejects an unknown value by name | server/tests/lab-04/action-status.unit.test.ts | Pending |
+| UNIT-03 | Unit | BR-27 | Comma-separated `status` parser | Parses one or several statuses; rejects an unknown value by name | server/tests/lab-04/action-status.unit.test.ts | Pass |
 
 ### API — Actions Taken (`actions-taken.api.test.ts`)
 
@@ -131,24 +131,24 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| DASH-S-01 | API | AC-19 | New / Open / In Progress / Waiting counts vs direct Prisma counts | Equal | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-02 | API | AC-19 | Unassigned, My Assigned, High Priority vs direct queries | Equal, CLOSED/CANCELLED excluded | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-03 | API | AC-19 | My Open Actions count and list | Only my PLANNED/IN_PROGRESS actions, 10 max oldest first, total correct | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-04 | API | AC-19 | Recent Tickets list | 10 max, `updatedAt` desc, equals direct query | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-05 | API | AC-20 | IT Staff user with nothing assigned | My Assigned and My Open Actions are 0, drill-downs present | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-06 | API | AC-21, BR-27 | Each Queue drill-down applied to `GET /api/staff/tickets` | `meta.total` equals the card count | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-07 | API | AC-23 | Administrator variant | Same metrics plus active/inactive counts equal to direct queries | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-08 | API | FR-12 | IT Staff response | No `accounts` block | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-09 | Authorization | AC-22 | Requester / no session | 403 / 401 | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
-| DASH-S-10 | API | BR-27 | `GET /api/staff/tickets?status=OPEN,REOPENED` | Only those statuses; single value unchanged | server/tests/lab-04/staff-dashboard.api.test.ts | Pending |
+| DASH-S-01 | API | AC-19 | New / Open / In Progress / Waiting counts vs direct Prisma counts | Equal | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-02 | API | AC-19 | Unassigned, My Assigned, High Priority vs direct queries | Equal, CLOSED/CANCELLED excluded | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-03 | API | AC-19 | My Open Actions count and list | Only my PLANNED/IN_PROGRESS actions, 10 max oldest first, total correct | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-04 | API | AC-19 | Recent Tickets list | 10 max, `updatedAt` desc, equals direct query | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-05 | API | AC-20 | IT Staff user with nothing assigned | My Assigned and My Open Actions are 0, drill-downs present | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-06 | API | AC-21, BR-27 | Each Queue drill-down applied to `GET /api/staff/tickets` | `meta.total` equals the card count | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-07 | API | AC-23 | Administrator variant | Same metrics plus active/inactive counts equal to direct queries | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-08 | API | FR-12 | IT Staff response | No `accounts` block | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-09 | Authorization | AC-22 | Requester / no session | 403 / 401 | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
+| DASH-S-10 | API | BR-27 | `GET /api/staff/tickets?status=OPEN,REOPENED` | Only those statuses; single value unchanged | server/tests/lab-04/staff-dashboard.api.test.ts | Pass |
 
 ### Performance-smoke (`dashboard-performance.smoke.test.ts`)
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| PERF-01 | Performance-smoke | AC-24 | Staff dashboard on ≥ 2,000 Tickets and ≥ 2,000 Actions Taken | < 300 ms (median of 5 calls) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pending |
+| PERF-01 | Performance-smoke | AC-24 | Staff dashboard on ≥ 2,000 Tickets and ≥ 2,000 Actions Taken | < 300 ms (median of 5 calls) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
 | PERF-02 | Performance-smoke | AC-24 | Requester dashboard on the same volume | < 300 ms | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pending |
-| PERF-03 | Performance-smoke | AC-24, BR-22 | SQL query count per dashboard call, before and after adding 200 Tickets | Same count (no per-row queries) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pending |
+| PERF-03 | Performance-smoke | AC-24, BR-22 | SQL statements per staff dashboard call for two users with different, non-zero numbers of open actions (and a zero-data user) | Same count for both busy users, ≤ 12, zero-data user ≤ that (no per-row queries) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
 
 ### Migration / hardening API (`migration-regression.api.test.ts`, `hardening.api.test.ts`)
 
@@ -170,11 +170,11 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| UI-01 | UI component | FR-12 | Staff dashboard renders the 8 cards with API counts | Labels and counts shown | client/tests/lab-04/StaffDashboard.test.tsx | Pending |
-| UI-02 | UI component | AC-21 | Staff card link targets | Each link carries the API drill-down query | client/tests/lab-04/StaffDashboard.test.tsx | Pending |
-| UI-03 | UI component | AC-20 | Zero metrics and empty lists | "0" shown, "View all" kept, empty messages | client/tests/lab-04/StaffDashboard.test.tsx | Pending |
-| UI-04 | UI component | FR-19 | Loading, then API failure | Skeletons, then error panel with "Try again"; no numbers | client/tests/lab-04/StaffDashboard.test.tsx | Pending |
-| UI-05 | UI component | AC-23 | Administrator variant | Active/Inactive Users cards present | client/tests/lab-04/StaffDashboard.test.tsx | Pending |
+| UI-01 | UI component | FR-12 | Staff dashboard renders the 8 cards with API counts | Labels and counts shown | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
+| UI-02 | UI component | AC-21 | Staff card link targets | Each link carries the API drill-down query | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
+| UI-03 | UI component | AC-20 | Zero metrics and empty lists | "0" shown, "View all" kept, empty messages | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
+| UI-04 | UI component | FR-19 | Loading, then API failure | Skeletons, then error panel with "Try again"; no numbers | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
+| UI-05 | UI component | AC-23 | Administrator variant | Active/Inactive Users cards present | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
 | UI-06 | UI component | FR-11 | Requester dashboard cards, recent and recently resolved lists | Rendered from API data | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
 | UI-07 | UI component | AC-21 | Requester card → My Tickets with the status filter pre-applied and visible | Filter chips shown, request sent with `status` | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
 | UI-08 | UI component | AC-20 | Requester with no Tickets | Zeros, "No tickets yet" + Create Ticket | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
@@ -189,7 +189,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | UI-17 | UI component | AC-12 | RESOLUTION_BLOCKED response | Inline message; blocking actions highlighted and linked | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
 | UI-18 | UI component | FR-06 | Successful status change | Badge, options, and history refreshed; live-region message | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
 | UI-19 | UI component | AC-15 | Status history timeline | Rows oldest first with who and when | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
-| UI-20 | UI component | FR-15 | Role navigation and landing screen | Dashboard first for every role; Administrator also sees My Queue | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
+| UI-20 | UI component | FR-15 | Role navigation and landing screen | Dashboard first for every role; Administrator also sees My Queue | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
 | UI-21 | UI component | AC-25, FR-17 | Double click on "Save Action" | One request; submit disabled while in flight; `Idempotency-Key` sent | client/tests/lab-04/Hardening.test.tsx | Pending |
 | UI-22 | UI component | AC-26, FR-18 | Network failure on Create Ticket, Action form, comment box | Every entered value kept | client/tests/lab-04/Hardening.test.tsx | Pending |
 
@@ -245,9 +245,9 @@ same PR as the behavior change, and the test then asserts the new rule.
 | Administrator creates an Internal Note | server/tests/lab-03/comments-notes.api.test.ts (l.151) | 403 | 201 | Revised matrix, AC-17 | 25 (done) |
 | AUTHZ-11 Administrator claims/reassigns | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.147) | 403 | 200 | Revised matrix, AC-17 | 25 (done) |
 | AUTHZ-11 Administrator changes status | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.234) | 403 | 200 | Revised matrix, AC-17 | 25 (done) |
-| UI-09 Administrator navigation | client/tests/lab-03/AppShell.test.tsx (l.79) | "Users" only, no "My Queue" | Dashboard, My Queue, Users | Revised matrix, FR-15 | 26 |
+| UI-09 Administrator navigation | client/tests/lab-03/AppShell.test.tsx (l.79) | "Users" only, no "My Queue" | Dashboard, My Queue, Users | Revised matrix, FR-15 | 26 (done) |
 | E2E-01 lands on My Tickets after login | e2e/lab-03/authentication.spec.ts (l.47) | URL `/tickets` | URL `/dashboard`, then "My Tickets" link visible | Dashboard is the landing screen, FR-15 | 27 |
-| RESP-01 Ticket Queue across breakpoints | e2e/lab-03/staff-ticket-flow.spec.ts (l.111) | Relies on landing on the queue | Navigates to "My Queue" first | Otherwise it would silently check the dashboard and save the wrong screenshot | 26 |
+| RESP-01 Ticket Queue across breakpoints | e2e/lab-03/staff-ticket-flow.spec.ts (l.111) | Relies on landing on the queue | Opens the queue explicitly first | Landing is now the Dashboard. Checked before changing it: the mobile step then passes on the wrong screen (the dashboard has no table either) and the tablet step fails — a half-silent failure, not the fully silent one this row first predicted | 26 (done) |
 | GET /api/requesters (2 tests) | server/tests/lab-02/requester-context.api.test.ts (l.30–42) | 200 with the Requester list | Replaced by HARD-04: no data returned | Unauthenticated disclosure removed, BR-31 | 28 |
 | STAFF-Q-04 status filter | server/tests/lab-03/staff-queue.api.test.ts (l.73) | Seeded RESOLVED Ticket on page 1 of *all* RESOLVED Tickets | Same assertions, scoped with `search=TKT-9999` like its siblings STAFF-Q-05/06 | Test isolation, not a spec change: 84 RESOLVED Tickets had become newer than the seeded one (43 from Lab 4 workflow fixtures, 41 from other runs) | 25 (done) |
 | STAFF-Q-07 ownerId filter | server/tests/lab-03/staff-queue.api.test.ts (l.106) | Seeded Margaret-owned Tickets on page 1 of *all* her Tickets | Same assertions, scoped with `search=TKT-9999` | Test isolation: 51 of the 54 newer Margaret-owned Tickets came from Lab 3's own claim tests, so it was failing on its own | 25 (done) |
@@ -443,3 +443,50 @@ detected (WF-11, WF-12).
 **Covered:** FR-06–FR-10, BR-13–BR-18, BR-21; AC-12, AC-13, AC-15, AC-16
 (Ticket side), AC-17, AC-18. Tests: UNIT-02, MIG-03, WF-01–WF-14,
 AUTHZ-07–AUTHZ-11, UI-16–UI-19.
+
+### Issue 26 — IT Staff dashboard
+
+**TDD.** `staff-dashboard.api.test.ts` (DASH-S-01–DASH-S-10), UNIT-03,
+`dashboard-performance.smoke.test.ts` (PERF-01, PERF-03) and
+`StaffDashboard.test.tsx` (UI-01–UI-05, UI-20, plus the queue drill-down test)
+were written first and failed on the missing route, parser, and screen. PERF-03
+passed trivially at that point (a missing route issues zero queries); it became
+meaningful once the route existed.
+
+**Implementation notes.** `GET /api/dashboard/staff` runs one `groupBy` for the
+four status cards, `count`s for the others, and two bounded top-N lists, all in
+one `Promise.all`: 9 SQL statements whatever the volume. The queue now accepts a
+comma-separated `status`, reads and writes its filters in the URL (so a card
+lands on exactly its own list), and gets the **Owner filter that Lab 3's
+ui-spec §4 promised but the Lab 3 screen never had** — needed for the
+Unassigned and My Assigned drill-downs.
+
+**PERF-03 refined while implementing.** The first version asserted that a busy
+user and the zero-data user issue the same number of statements: 9 vs 8. The
+difference is Prisma loading a relation with one batched `WHERE id IN (…)`
+statement that it skips when there are no rows — a constant +1, not a per-row
+pattern. The test now compares two users who both have open actions in
+different numbers (2 and 9 at the time of the run: 9 statements each), keeps the
+zero-data user as a lower bound, and caps the count at 12.
+
+**Real-app check** (temporary Playwright script, then deleted):
+- Margaret's eight cards compared with direct SQL at the same moment: New 2693,
+  Open 111, In Progress 357, Waiting 26, Unassigned 3231, My Assigned 70, High
+  Priority 221, My Open Actions 2 — all identical.
+- The Unassigned card opens the queue with "Active (not closed or cancelled)"
+  and "Unassigned" preselected; queue total 3231 = the card's count.
+- The Administrator lands on the dashboard with the Active/Inactive Users
+  cards.
+- No horizontal overflow at 1280, 820, or 375px; 0 console errors.
+- One defect fixed from the mobile screenshot: action status badges stretched
+  across the whole list row.
+
+**Results:**
+- Server: **245/245**. PERF-01 median 5.0 ms on 3,322 Tickets / 2,000 Actions
+  Taken (threshold 300 ms).
+- Client: **89/89**; `tsc` clean.
+- Playwright (Lab 2–3): 17/17 after the planned RESP-01 update.
+
+**Covered:** FR-12, FR-13, FR-14 (staff side), FR-15 (staff roles), BR-22,
+BR-24–BR-27; AC-19–AC-24 (staff side). Tests: UNIT-03, DASH-S-01–DASH-S-10,
+PERF-01, PERF-03, UI-01–UI-05, UI-20.

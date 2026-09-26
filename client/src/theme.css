@@ -133,3 +133,91 @@ body {
   width: 100%;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
+
+/* Lab 4, Issues 26–27 — dashboards (ui-spec.md §2). */
+.zg-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 768px) {
+  .zg-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 992px) {
+  .zg-metric-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.zg-metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 7.5rem;
+  padding: 0.85rem 1rem;
+  background: var(--zg-surface);
+  border: 1px solid var(--zg-surface-border);
+  border-radius: 8px;
+  color: var(--zg-text);
+  text-decoration: none;
+}
+.zg-metric-card:hover {
+  border-color: var(--zg-secondary);
+}
+.zg-metric-card-warning {
+  background: var(--zg-warning-bg);
+}
+.zg-metric-label {
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+.zg-metric-count {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.zg-metric-link {
+  margin-top: auto;
+  font-size: 0.8rem;
+  color: var(--zg-secondary);
+  font-weight: 600;
+}
+.zg-skeleton {
+  background: linear-gradient(90deg, var(--zg-bg), var(--zg-surface-border), var(--zg-bg));
+}
+.zg-panel {
+  background: var(--zg-surface);
+  border: 1px solid var(--zg-surface-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+.zg-list-row {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr) auto;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--zg-surface-border);
+}
+.zg-list-row > :last-child {
+  grid-column: 2 / -1;
+}
+.zg-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+@media (max-width: 575.98px) {
+  .zg-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .zg-list-row > .zg-truncate,
+  .zg-list-row > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+.zg-list-row > [class^="badge-"] {
+  justify-self: start;
+}
