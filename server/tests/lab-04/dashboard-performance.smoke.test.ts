@@ -78,12 +78,14 @@ async function countQueries(fn: () => Promise<unknown>) {
 let staffCookie: string;
 let otherStaffCookie: string;
 let zeroStaffCookie: string;
+let requesterCookie: string;
 
 beforeAll(async () => {
   await ensureVolume();
   staffCookie = await loginAs("margaret.hamilton@toktickit.com");
   otherStaffCookie = await loginAs("katherine.johnson@toktickit.com");
   zeroStaffCookie = await loginAs("zed.empty@toktickit.com");
+  requesterCookie = await loginAs("ada.lovelace@example.com");
 }, 60_000);
 
 describe("Dashboard performance smoke", () => {
@@ -93,6 +95,15 @@ describe("Dashboard performance smoke", () => {
       expect(res.status).toBe(200);
     });
     console.log(`PERF-01 staff dashboard median: ${ms.toFixed(1)} ms (tickets=${await getPrisma().ticket.count()}, actions=${await getPrisma().actionTaken.count()})`);
+    expect(ms).toBeLessThan(THRESHOLD_MS);
+  });
+
+  it(`PERF-02 requester dashboard answers under ${THRESHOLD_MS} ms (median of 5) on the same volume`, async () => {
+    const ms = await median(async () => {
+      const res = await request(app).get("/api/dashboard/requester").set("Cookie", requesterCookie);
+      expect(res.status).toBe(200);
+    });
+    console.log(`PERF-02 requester dashboard median: ${ms.toFixed(1)} ms`);
     expect(ms).toBeLessThan(THRESHOLD_MS);
   });
 
