@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
 import AttachmentSection from "./components/AttachmentSection.js";
+import ActionsTaken from "./components/ActionsTaken.js";
 import CommentPanel from "./components/CommentPanel.js";
+import StatusHistory from "./components/StatusHistory.js";
 import {
   addAttachments,
   Attachment,
@@ -260,6 +262,14 @@ export default function RequesterTicketDetail() {
       </div>
 
       <hr />
+
+      <div className="mb-4">
+        <ActionsTaken ticketId={ticket.id} ticketStatus={ticket.status} mode="requester" />
+      </div>
+
+      <div className="mb-4">
+        <StatusHistory ticketId={ticket.id} />
+      </div>
 
       <div className="mb-4">
         <CommentPanel

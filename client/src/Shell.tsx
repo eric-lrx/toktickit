@@ -15,11 +15,21 @@ const NAV_BY_ROLE: Record<Role, { to: string; label: string; end?: boolean }[]> 
   // end on "/tickets" — without it, NavLink's prefix match would also mark
   // My Tickets active while on /tickets/new or /tickets/:id.
   REQUESTER: [
+    { to: "/dashboard", label: "Dashboard" },
     { to: "/tickets", label: "My Tickets", end: true },
     { to: "/tickets/new", label: "Create Ticket" },
   ],
-  IT_STAFF: [{ to: "/queue", label: "My Queue" }],
-  ADMINISTRATOR: [{ to: "/admin/users", label: "Users" }],
+  // Lab 4 (ui-spec.md §1) — Dashboard first for staff roles; the
+  // Administrator gains My Queue with the revised authorization matrix.
+  IT_STAFF: [
+    { to: "/dashboard", label: "Dashboard" },
+    { to: "/queue", label: "My Queue" },
+  ],
+  ADMINISTRATOR: [
+    { to: "/dashboard", label: "Dashboard" },
+    { to: "/queue", label: "My Queue" },
+    { to: "/admin/users", label: "Users" },
+  ],
 };
 
 const ROLE_LABEL: Record<Role, string> = {
