@@ -2,6 +2,7 @@ import type { Express, Response } from "express";
 import type { ActionStatus, Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import { AuthedRequest, requireAuth, requireRole } from "./session.js";
+import { idempotent } from "./idempotency.js";
 import {
   ACTION_STATUSES,
   ACTIVE_TICKET_STATUSES,
@@ -176,7 +177,7 @@ export function registerActionsTakenRoutes(app: Express) {
     }
   });
 
-  app.post("/api/tickets/:id/actions", ...requireStaffActions, async (req: AuthedRequest, res: Response) => {
+  app.post("/api/tickets/:id/actions", ...requireStaffActions, idempotent("actions.create"), async (req: AuthedRequest, res: Response) => {
     const ticketId = Number(req.params.id);
     const ticket = Number.isInteger(ticketId) ? await getPrisma().ticket.findUnique({ where: { id: ticketId } }) : null;
     if (!ticket) {

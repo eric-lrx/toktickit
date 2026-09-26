@@ -5,6 +5,7 @@ import AttachmentSection from "./components/AttachmentSection.js";
 import ActionsTaken from "./components/ActionsTaken.js";
 import CommentPanel from "./components/CommentPanel.js";
 import StatusHistory from "./components/StatusHistory.js";
+import { formatDateTime } from "./dates.js";
 import {
   addAttachments,
   Attachment,
@@ -145,8 +146,8 @@ export default function RequesterTicketDetail() {
           <Badge tone={statusTone(ticket.status)}>{STATUS_LABELS[ticket.status]}</Badge>
         </div>
         <small className="text-muted">
-          Created {new Date(ticket.createdAt).toLocaleString()} · Updated{" "}
-          {new Date(ticket.updatedAt).toLocaleString()}
+          Created {formatDateTime(ticket.createdAt)} · Updated{" "}
+          {formatDateTime(ticket.updatedAt)}
         </small>
       </div>
 
@@ -275,8 +276,8 @@ export default function RequesterTicketDetail() {
         <CommentPanel
           variant="public"
           entries={ticket.publicComments}
-          onPost={async (content) => {
-            await postComment(ticket.id, content);
+          onPost={async (content, key) => {
+            await postComment(ticket.id, content, key);
             await loadTicket();
           }}
         />

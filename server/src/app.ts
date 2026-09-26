@@ -25,6 +25,7 @@ import { OPEN_ACTION_STATUSES } from "./actionStatus.js";
 import { nextResolvedAt } from "./ticketWorkflow.js";
 import { parseStatusList } from "./statusFilter.js";
 import { registerDashboardRoutes } from "./dashboard.js";
+import { idempotent } from "./idempotency.js";
 
 // Issue 34 — every Requester route requires both a session (401 if absent)
 // and the REQUESTER role (403 for any other authenticated role); ownership
@@ -44,6 +45,23 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(attachSession);
 app.use(requirePasswordChanged);
+
+// Lab 3's specification (BR-10) promised this CSRF layer but it was never
+// implemented; Lab 4 adds it. A cross-site HTML form can only send
+// urlencoded, text/plain, or multipart bodies without a CORS preflight, so
+// mutating requests with a form-style body are refused. Multipart stays
+// allowed for file uploads (sameSite: 'lax' still keeps the cookie off
+// cross-site POSTs), and body-less requests (logout) carry no content type.
+const ALLOWED_MUTATION_TYPES = /^(application\/json|multipart\/form-data)\b/i;
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const mutating = req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE";
+  const type = req.headers["content-type"];
+  if (mutating && req.path.startsWith("/api/") && type && !ALLOWED_MUTATION_TYPES.test(type)) {
+    res.status(415).json({ error: { message: "Unsupported content type." } });
+    return;
+  }
+  next();
+});
 
 // ---------------------------------------------------------------------------
 // Issue 2 — API health check
@@ -89,23 +107,9 @@ app.get("/api/related-systems", async (_req: Request, res: Response) => {
   }
 });
 
-// Lab 3 (Issue 32) — the User table now also holds IT Staff and
-// Administrator rows, so this legacy list must filter to role: "REQUESTER"
-// or the Development Requester selector would start leaking staff/admin
-// identities. The selector itself is removed in Issue 33; until then it
-// must keep working exactly as it did in Lab 2.
-app.get("/api/requesters", async (_req: Request, res: Response) => {
-  try {
-    const requesters = await getPrisma().user.findMany({
-      where: { isActive: true, role: "REQUESTER" },
-      orderBy: { id: "asc" },
-      select: { id: true, name: true, email: true },
-    });
-    res.status(200).json(requesters);
-  } catch {
-    res.status(500).json({ error: "Unable to load requesters" });
-  }
-});
+// Lab 4 (BR-31) — GET /api/requesters, the Lab 2 Development Requester
+// selector's data source, is removed: it answered without any session and
+// returned every active Requester's name and email.
 
 // ---------------------------------------------------------------------------
 // Issue 8 — Create Ticket.
@@ -182,6 +186,8 @@ async function validateTicketInput(
 app.post(
   "/api/tickets",
   ...requireRequester,
+  // Before multer: a replayed request returns without uploading anything.
+  idempotent("tickets.create"),
   uploadAttachments.array("attachments", MAX_ACTIVE_ATTACHMENTS),
   async (req: AuthedRequest, res: Response) => {
     const files = (req.files as Express.Multer.File[]) ?? [];
@@ -535,6 +541,28 @@ app.post("/api/auth/logout", requireAuth, (req: AuthedRequest, res: Response) =>
   revokeSession(req);
   clearSessionCookie(res);
   res.status(200).json({ data: { loggedOut: true } });
+});
+
+// Lab 4 — session probe for the client's start-up check. /api/auth/me keeps
+// its Lab 3 contract (401 without a session), but the browser logs every 401
+// as a console error, so the app's "is anyone signed in?" question now asks
+// this route, which answers 200 with data: null instead (handout §8.5, zero
+// console errors).
+app.get("/api/auth/session", async (req: AuthedRequest, res: Response) => {
+  if (!req.user) {
+    res.status(200).json({ data: null });
+    return;
+  }
+  try {
+    const user = await getPrisma().user.findUnique({ where: { id: req.user.id } });
+    res.status(200).json({
+      data: user
+        ? { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword }
+        : null,
+    });
+  } catch {
+    res.status(500).json({ error: { message: "Unable to load current user" } });
+  }
 });
 
 app.get("/api/auth/me", requireAuth, async (req: AuthedRequest, res: Response) => {
@@ -1083,7 +1111,7 @@ function validateCommentContent(raw: unknown): { error: string } | { content: st
 
 // Requester (own Ticket only), IT Staff or Administrator (any Ticket) —
 // Lab 4's revised matrix gives the Administrator IT Staff behavior.
-app.post("/api/tickets/:id/comments", requireAuth, async (req: AuthedRequest, res: Response) => {
+app.post("/api/tickets/:id/comments", requireAuth, idempotent("comments.create"), async (req: AuthedRequest, res: Response) => {
   const id = Number(req.params.id);
   const ticket = Number.isInteger(id) ? await getPrisma().ticket.findUnique({ where: { id } }) : null;
   if (!ticket || (req.user!.role === "REQUESTER" && ticket.requesterId !== req.user!.id)) {
@@ -1150,7 +1178,7 @@ app.get("/api/tickets/:id/comments", requireAuth, async (req: AuthedRequest, res
 // IT Staff only — AC-04/AUTHZ-02: a Requester's direct call is rejected by
 // requireStaffWrite before the handler ever runs, so no note content can
 // leak regardless of what the handler itself does.
-app.post("/api/tickets/:id/notes", ...requireStaffWrite, async (req: AuthedRequest, res: Response) => {
+app.post("/api/tickets/:id/notes", ...requireStaffWrite, idempotent("notes.create"), async (req: AuthedRequest, res: Response) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(404).json({ error: { message: "Ticket not found" } });

@@ -226,3 +226,18 @@ body {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Lab 4 (ui-spec.md §7) — Bootstrap's default focus ring is faint on this
+   theme (noted in the Lab 3 checklist); every interactive element gets a
+   clearly visible primary outline when reached by keyboard. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+.zg-metric-card:focus-visible {
+  outline: 3px solid var(--zg-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}

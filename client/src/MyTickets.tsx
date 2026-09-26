@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
 import { getMyTickets, RequestedPriority, Ticket, TicketStatus } from "./api.js";
-import { STATUS_LABELS, STATUSES } from "./ticketStatus.js";
+import { STATUS_LABELS, STATUSES, statusTone } from "./ticketStatus.js";
+import { formatDate } from "./dates.js";
 
 type LoadState = "loading" | "loaded" | "error";
 type SortField = "createdAt" | "ticketNumber" | "summary";
@@ -237,9 +238,9 @@ export default function MyTickets() {
                       <Badge tone={priorityTone(t.requestedPriority)}>{t.requestedPriority}</Badge>
                     </td>
                     <td>
-                      <Badge tone="pale">{t.status}</Badge>
+                      <Badge tone={statusTone(t.status)}>{STATUS_LABELS[t.status]}</Badge>
                     </td>
-                    <td>{new Date(t.createdAt).toLocaleDateString()}</td>
+                    <td>{formatDate(t.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -261,8 +262,8 @@ export default function MyTickets() {
                   </div>
                   <p className="mb-1">{t.summary}</p>
                   <div className="d-flex justify-content-between align-items-center">
-                    <Badge tone="pale">{t.status}</Badge>
-                    <small className="text-muted">{new Date(t.createdAt).toLocaleDateString()}</small>
+                    <Badge tone={statusTone(t.status)}>{STATUS_LABELS[t.status]}</Badge>
+                    <small className="text-muted">{formatDate(t.createdAt)}</small>
                   </div>
                 </div>
               </Link>
