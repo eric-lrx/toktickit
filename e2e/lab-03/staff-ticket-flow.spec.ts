@@ -109,6 +109,9 @@ test("RESP-01 the Ticket Queue renders as cards, a reduced table, then the full 
   page,
 }) => {
   await loginAs(page, STAFF_MARGARET);
+  // Updated in Lab 4 (docs/lab-04/tests.md §3): IT Staff now land on the
+  // Dashboard, so the queue is opened explicitly instead of assumed.
+  await page.goto("/queue");
 
   await page.setViewportSize({ width: 375, height: 812 });
   await page.reload();

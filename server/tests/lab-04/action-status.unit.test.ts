@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { allowedActionTransitions, isAllowedActionTransition } from "../../src/actionStatus.js";
 import { nextResolvedAt } from "../../src/ticketWorkflow.js";
+import { parseStatusList } from "../../src/statusFilter.js";
 
 describe("Action status matrix (BR-07)", () => {
   it("UNIT-01 PLANNED can move to IN_PROGRESS, COMPLETED, or CANCELLED", () => {
@@ -34,5 +35,18 @@ describe("resolvedAt rule (BR-16)", () => {
     expect(nextResolvedAt("REOPENED", earlier, now)).toBeNull();
     expect(nextResolvedAt("IN_PROGRESS", null, now)).toBeNull();
     expect(nextResolvedAt("CANCELLED", null, now)).toBeNull();
+  });
+});
+
+describe("Comma-separated status filter (BR-27)", () => {
+  it("UNIT-03 parses one status or several", () => {
+    expect(parseStatusList("OPEN")).toEqual({ statuses: ["OPEN"] });
+    expect(parseStatusList("NEW,OPEN,IN_PROGRESS")).toEqual({ statuses: ["NEW", "OPEN", "IN_PROGRESS"] });
+    expect(parseStatusList(" OPEN , REOPENED ")).toEqual({ statuses: ["OPEN", "REOPENED"] });
+  });
+
+  it("UNIT-03 rejects an unknown value by name, and an empty list", () => {
+    expect(parseStatusList("OPEN,DONE")).toEqual({ error: "invalid status: 'DONE'" });
+    expect(parseStatusList("")).toEqual({ error: "invalid status: ''" });
   });
 });

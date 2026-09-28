@@ -23,6 +23,8 @@ import { allowedTransitions, isAllowedTransition } from "./statusTransitions.js"
 import { registerActionsTakenRoutes } from "./actionsTaken.js";
 import { OPEN_ACTION_STATUSES } from "./actionStatus.js";
 import { nextResolvedAt } from "./ticketWorkflow.js";
+import { parseStatusList } from "./statusFilter.js";
+import { registerDashboardRoutes } from "./dashboard.js";
 
 // Issue 34 — every Requester route requires both a session (401 if absent)
 // and the REQUESTER role (403 for any other authenticated role); ownership
@@ -668,11 +670,14 @@ app.get("/api/staff/tickets", ...requireStaffRead, async (req: AuthedRequest, re
   }
 
   if (req.query.status !== undefined) {
-    if (!TICKET_STATUSES.includes(req.query.status as (typeof TICKET_STATUSES)[number])) {
-      res.status(400).json({ error: { message: `invalid status: '${req.query.status}'` } });
+    // Lab 4 (BR-27) — one status or a comma-separated list; a single value
+    // behaves exactly as in Lab 3.
+    const parsed = parseStatusList(String(req.query.status));
+    if ("error" in parsed) {
+      res.status(400).json({ error: { message: parsed.error } });
       return;
     }
-    where.status = req.query.status as (typeof TICKET_STATUSES)[number];
+    where.status = parsed.statuses.length === 1 ? parsed.statuses[0] : { in: parsed.statuses };
   }
 
   if (req.query.itPriority !== undefined) {
@@ -1200,6 +1205,9 @@ app.get("/api/tickets/:id/notes", ...requireStaffRead, async (req: AuthedRequest
 
 // Lab 4, Issue 23 — Actions Taken (docs/lab-04/api-spec.md).
 registerActionsTakenRoutes(app);
+
+// Lab 4, Issues 26–27 — role dashboards (docs/lab-04/specification.md §5.1).
+registerDashboardRoutes(app);
 
 // ---------------------------------------------------------------------------
 // Issue 38 — Administrator user management.
