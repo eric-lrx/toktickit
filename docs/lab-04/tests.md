@@ -178,13 +178,13 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | UI-06 | UI component | FR-11 | Requester dashboard cards, recent and recently resolved lists | Rendered from API data | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
 | UI-07 | UI component | AC-21 | Requester card → My Tickets with the status filter pre-applied and visible | Filter chips shown, request sent with `status` | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
 | UI-08 | UI component | AC-20 | Requester with no Tickets | Zeros, "No tickets yet" + Create Ticket | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
-| UI-09 | UI component | AC-10 | Actions Taken list with several actions | All rendered in API order with status badges | client/tests/lab-04/ActionsTaken.test.tsx | Pending |
-| UI-10 | UI component | FR-02, AC-04 | Create form: follow-up note appears and becomes required when ticked | Client-side error without a note; request blocked | client/tests/lab-04/ActionsTaken.test.tsx | Pending |
-| UI-11 | UI component | AC-05 | Server rejects an inactive assignee | Error under Assignee, entered values kept | client/tests/lab-04/ActionsTaken.test.tsx | Pending |
-| UI-12 | UI component | AC-06 | Start / Complete (result required) / Cancel (dialog) controls per status | Only permitted controls; none on terminal actions | client/tests/lab-04/ActionsTaken.test.tsx | Pending |
-| UI-13 | UI component | AC-16 | STALE_UPDATE on save | Warning with "Reload"; typed values kept until reload | client/tests/lab-04/ActionsTaken.test.tsx | Pending |
-| UI-14 | UI component | AC-09, AC-29 | Requester Ticket Detail | Read-only Actions Taken, no create/edit controls, no Internal Notes in the DOM | client/tests/lab-04/ActionsTaken.test.tsx | Pending |
-| UI-15 | UI component | AC-14 | Resolved Ticket | "Add Action" replaced by the reopen message | client/tests/lab-04/ActionsTaken.test.tsx | Pending |
+| UI-09 | UI component | AC-10 | Actions Taken list with several actions | All rendered in API order with status badges | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
+| UI-10 | UI component | FR-02, AC-04 | Create form: follow-up note appears and becomes required when ticked | Client-side error without a note; request blocked | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
+| UI-11 | UI component | AC-05 | Server rejects an inactive assignee | Error under Assignee, entered values kept | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
+| UI-12 | UI component | AC-06 | Start / Complete (result required) / Cancel (dialog) controls per status | Only permitted controls; none on terminal actions | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
+| UI-13 | UI component | AC-16 | STALE_UPDATE on save | Warning with "Reload"; typed values kept until reload | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
+| UI-14 | UI component | AC-09, AC-29 | Requester Ticket Detail | Read-only Actions Taken, no create/edit controls, no Internal Notes in the DOM | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
+| UI-15 | UI component | AC-14 | Resolved Ticket | "Add Action" replaced by the reopen message | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
 | UI-16 | UI component | AC-18 | Status select options | Exactly the API's `allowedTransitions` | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
 | UI-17 | UI component | AC-12 | RESOLUTION_BLOCKED response | Inline message; blocking actions highlighted and linked | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
 | UI-18 | UI component | FR-06 | Successful status change | Badge, options, and history refreshed; live-region message | client/tests/lab-04/TicketWorkflow.test.tsx | Pending |
@@ -198,9 +198,9 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
 | STYLE-01 | UI style | ui-spec §2 | Metric cards use theme tokens | Surface/border/text from `--zg-*` values | client/tests/lab-04/zen-green.style.test.tsx | Pending |
-| STYLE-02 | UI style | ui-spec §3 | Action status badges for the 4 statuses | Distinct classes and text labels | client/tests/lab-04/zen-green.style.test.tsx | Pending |
-| STYLE-03 | UI style | ui-spec §3, AC-29 | Actions Taken vs Internal Notes on staff detail | Different background/border and labels | client/tests/lab-04/zen-green.style.test.tsx | Pending |
-| STYLE-04 | UI style | ui-spec §3 | Action form editable vs read-only fields | `--zg-field-bg` vs `--zg-readonly-bg` | client/tests/lab-04/zen-green.style.test.tsx | Pending |
+| STYLE-02 | UI style | ui-spec §3 | Action status badges for the 4 statuses | Distinct classes and text labels | client/tests/lab-04/zen-green.style.test.tsx | Pass |
+| STYLE-03 | UI style | ui-spec §3, AC-29 | Actions Taken vs Internal Notes on staff detail | Different background/border and labels | client/tests/lab-04/zen-green.style.test.tsx | Pass |
+| STYLE-04 | UI style | ui-spec §3 | Action form editable vs read-only fields | `--zg-field-bg` vs `--zg-readonly-bg` | client/tests/lab-04/zen-green.style.test.tsx | Pass |
 | STYLE-05 | UI style | ui-spec §7 | Focus indicator | 3px `--zg-primary` outline on focus | client/tests/lab-04/zen-green.style.test.tsx | Pending |
 
 ### Responsive and E2E (`e2e/lab-04/`)
@@ -350,3 +350,41 @@ non-active Ticket through the real status route (cancellation).
 **Covered:** FR-01–FR-05, BR-01–BR-12, BR-19, BR-20; AC-01, AC-03–AC-11,
 AC-14 (create/update side). Tests: UNIT-01, API-01–API-20, AUTHZ-01–AUTHZ-06,
 MIG-01, MIG-02, MIG-04, MIG-05, MIG-06.
+
+
+### Issue 24 — Actions Taken UI
+
+**TDD.** `ActionsTaken.test.tsx` (UI-09–UI-15) and the Actions Taken rows of
+`zen-green.style.test.tsx` (STYLE-02–STYLE-04) were written first and failed
+because `src/components/ActionsTaken.tsx` did not exist.
+
+**Design choice.** One DOM structure for the list: a table that CSS folds into
+stacked cards below 768px (`.actions-table` in `theme.css`), instead of Lab 3's
+separate table and card renders — one list to keep in sync, and no duplicated
+text for the tests to work around.
+
+**Visual check** (temporary Playwright script logging in through the test helpers,
+screenshots read back, then deleted): TKT-9999-000003 on the staff detail at 1280,
+820, and 375px, horizontal overflow 0 at all three. Two real defects found and
+fixed from the screenshots: on desktop the "by <performer>" line meant for tablet
+also showed next to the Performed by column (Bootstrap's `d-block` is
+`!important` and overrode the hiding rule), and the "In Progress" badge wrapped
+onto two lines.
+
+**Real end-to-end flow** against the running API, on a throwaway Ticket: the
+follow-up note error kept the typed description; save; Start; Complete with a
+result; a second action cancelled through the accessible dialog; and a real stale
+conflict between two staff sessions (Margaret saves first, Katherine's save shows
+"Someone else changed this action…", keeps her typed text, and Reload brings the
+saved version). Final API state: both actions at version 3 with the right
+performer and assignee. Console errors after reload: 0.
+
+**Results:**
+- Client: **76/76** (Lab 1–3: 62, Lab 4: 14); `tsc --noEmit` clean. The only stderr
+  output is the two pre-existing `act()` warnings from Lab 2's AppShell test, same
+  as the baseline.
+- Server: unchanged by this Issue (208/208 at Issue 23).
+- Playwright (Lab 2–3): 17/17.
+
+**Covered:** FR-01–FR-05 (UI), AC-04, AC-05, AC-06, AC-09, AC-10, AC-14, AC-16,
+AC-29 (Requester view). Tests: UI-09–UI-15, STYLE-02–STYLE-04.

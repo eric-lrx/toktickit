@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
+import ActionsTaken from "./components/ActionsTaken.js";
 import CommentPanel from "./components/CommentPanel.js";
 import { useAuth } from "./AuthContext.js";
 import {
@@ -119,7 +120,7 @@ export default function StaffTicketDetail() {
   const statusOptions = [ticket.status, ...allowedTransitions(ticket.status)];
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 960 }}>
       <div
         className="p-3 mb-4 rounded"
         style={{ background: "var(--zg-readonly-bg)", border: "1px solid var(--zg-surface-border)" }}
@@ -266,6 +267,10 @@ export default function StaffTicketDetail() {
           </ul>
         </div>
       )}
+
+      <div className="mb-4">
+        <ActionsTaken ticketId={ticket.id} ticketStatus={ticket.status} mode="staff" staffUsers={staffUsers} />
+      </div>
 
       <div className="mb-4">
         <CommentPanel
