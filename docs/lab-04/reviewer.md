@@ -1,4 +1,4 @@
-Review (lab-02) Eric : 69540460030 @eric-lrx and marc : 69540460019 @marcoumarc
+Review (lab-04) Eric : 69540460030 @eric-lrx and marc : 69540460019 @marcoumarc
 ___________________________________________________________________________________PR 1 (Lab 4) : 
 eric-lrx/toktickit#63 · Issue 22: Sprint 4 engineering…
 Branch: feature/22-spec-and-test-plan → lab4-staging
@@ -45,7 +45,7 @@ Branch: feature/27-requester-dashboard → lab4-staging
 Reviewer: marcoumarc
 Verdict: Approved (2026-09-28)
 Reviewer comment I received: "Everything seems consistent here."
-How I responded: (aucune réponse de ta part sur GitHub)
+How I responded: (no reply from me on GitHub)
 
 PR 7 (Lab 4) : 
 eric-lrx/toktickit#69 · Issue 28: Final hardening and…
