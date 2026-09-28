@@ -64,15 +64,21 @@ async function median(fn: () => Promise<unknown>, runs = 5) {
   return times[Math.floor(times.length / 2)];
 }
 
-async function countQueries(fn: () => Promise<unknown>) {
-  let count = 0;
-  const stop = onPrismaQuery(() => count++);
+// Statement text with whitespace collapsed and bind parameters (including the
+// length of a batched `IN (...)` list) erased, so two calls that differ only
+// in how many rows they load produce the same text.
+const normalize = (sql: string) =>
+  sql.replace(/\s+/g, " ").replace(/IN \((\$\d+,?)+\)/g, "IN (…)").replace(/\$\d+/g, "$n");
+
+async function captureQueries(fn: () => Promise<unknown>) {
+  const statements: string[] = [];
+  const stop = onPrismaQuery((e) => statements.push(normalize(e.query)));
   try {
     await fn();
   } finally {
     stop();
   }
-  return count;
+  return statements;
 }
 
 let staffCookie: string;
@@ -108,23 +114,35 @@ describe("Dashboard performance smoke", () => {
   });
 
   // Prisma loads a relation with one batched `WHERE id IN (…)` statement and
-  // skips it when there are no rows, so a user with zero open actions issues
-  // one statement fewer. The meaningful comparison is between two users who
-  // both have open actions, in different numbers: a per-row (N+1) pattern
-  // would make their counts differ.
-  it("PERF-03 staff dashboard issues the same small number of queries whatever the number of rows", async () => {
+  // skips it when there are no rows. Two of those batches exist here:
+  // - the Tickets of My Open Actions, which depends on the user, so a user
+  //   with zero open actions issues one statement fewer;
+  // - the owners of Recent Tickets, which depends on shared data (whether any
+  //   of the 10 most recently updated Tickets has an owner), not on the user.
+  //   Comparing raw counts made the test fail whenever that shared data
+  //   changed between two calls (tests.md §9), so that batch is left out of
+  //   the per-user comparison.
+  // A per-row (N+1) pattern would run the same statement once per row, so each
+  // call must run every statement at most once.
+  it("PERF-03 staff dashboard issues the same small set of queries whatever the number of rows", async () => {
     const openCount = (email: string) =>
       getPrisma().actionTaken.count({ where: { assignee: { email }, status: { in: ["PLANNED", "IN_PROGRESS"] } } });
     const [many, few] = await Promise.all([openCount("margaret.hamilton@toktickit.com"), openCount("katherine.johnson@toktickit.com")]);
     expect(many, "Margaret and Katherine need different, non-zero numbers of open actions").not.toBe(few);
     expect(Math.min(many, few)).toBeGreaterThan(0);
 
-    const busy = await countQueries(() => request(app).get("/api/dashboard/staff").set("Cookie", staffCookie));
-    const other = await countQueries(() => request(app).get("/api/dashboard/staff").set("Cookie", otherStaffCookie));
-    const empty = await countQueries(() => request(app).get("/api/dashboard/staff").set("Cookie", zeroStaffCookie));
-    console.log(`PERF-03 staff dashboard queries: ${many} open actions → ${busy}, ${few} open actions → ${other}, zero-data user → ${empty}`);
-    expect(busy).toBe(other);
-    expect(empty).toBeLessThanOrEqual(busy);
-    expect(busy).toBeLessThanOrEqual(12);
+    const busy = await captureQueries(() => request(app).get("/api/dashboard/staff").set("Cookie", staffCookie));
+    const other = await captureQueries(() => request(app).get("/api/dashboard/staff").set("Cookie", otherStaffCookie));
+    const empty = await captureQueries(() => request(app).get("/api/dashboard/staff").set("Cookie", zeroStaffCookie));
+    console.log(`PERF-03 staff dashboard queries: ${many} open actions → ${busy.length}, ${few} open actions → ${other.length}, zero-data user → ${empty.length}`);
+
+    for (const [label, statements] of [["busy", busy], ["other", other], ["empty", empty]] as const) {
+      expect(new Set(statements).size, `${label}: a statement ran more than once`).toBe(statements.length);
+      expect(statements.length, `${label}: statement count`).toBeLessThanOrEqual(12);
+    }
+    const recentOwners = /FROM "public"\."User" WHERE "public"\."User"\."id" IN \(…\)/;
+    const perUser = (statements: string[]) => statements.filter((s) => !recentOwners.test(s)).sort();
+    expect(perUser(busy)).toEqual(perUser(other));
+    expect(perUser(empty).length).toBeLessThanOrEqual(perUser(busy).length);
   });
 });

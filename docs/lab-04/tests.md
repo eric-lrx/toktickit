@@ -148,7 +148,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 |---|---|---|---|---|---|---|
 | PERF-01 | Performance-smoke | AC-24 | Staff dashboard on ≥ 2,000 Tickets and ≥ 2,000 Actions Taken | < 300 ms (median of 5 calls) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
 | PERF-02 | Performance-smoke | AC-24 | Requester dashboard on the same volume | < 300 ms | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
-| PERF-03 | Performance-smoke | AC-24, BR-22 | SQL statements per staff dashboard call for two users with different, non-zero numbers of open actions (and a zero-data user) | Same count for both busy users, ≤ 12, zero-data user ≤ that (no per-row queries) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
+| PERF-03 | Performance-smoke | AC-24, BR-22 | SQL statements per staff dashboard call for two users with different, non-zero numbers of open actions (and a zero-data user) | No statement runs twice in one call, ≤ 12 per call, and the same statements for both busy users once the Recent Tickets owner batch (shared data) is set aside; zero-data user ≤ that (§9) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
 
 ### Migration / hardening API (`migration-regression.api.test.ts`, `hardening.api.test.ts`)
 
@@ -734,4 +734,27 @@ that redirects to the role's home. AC-30 is added to the specification.
 | Server | **267/267** (unchanged) |
 | Client (`tsc --noEmit` clean) | **108/108**: UI-24 adds 7 cases |
 | Playwright | **34/34**: E2E-11 added |
+
+## 9. Post-release fix — PERF-03 depended on shared data
+
+The first full server run from `main` at `75f9d7f` failed PERF-03 with 9
+statements for one user and 8 for the other (266/267). The next three full runs
+passed. Tracing the statements showed where the difference comes from. Prisma
+loads the owners of Recent Tickets with one batched `User … IN (…)` statement
+and skips it when none of the 10 most recently updated Tickets has an owner. So
+the count follows shared data, not the user or their number of rows. Forcing an
+owned recent Ticket changed every count by one (8/8/7 → 9/9/8). The
+failing run means that data changed between the two measured calls. What
+wrote the Ticket in that run was not identified.
+
+The test now checks the property it was meant to check, without depending on
+that data. No statement may run twice in one call (a per-row N+1 pattern would
+repeat one), there are at most 12 per call, and the two busy users run the same
+statements once the Recent Tickets owner batch is set aside. With an owned
+recent Ticket, that batch is the only statement removed (9 → 8 for both users).
+No dashboard code changed.
+
+| Suite | Result after the fix |
+|---|---|
+| Server | **267/267** |
 
