@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
-import { getMyTickets, RequestedPriority, Ticket } from "./api.js";
+import { getMyTickets, RequestedPriority, Ticket, TicketStatus } from "./api.js";
+import { STATUS_LABELS, STATUSES, statusTone } from "./ticketStatus.js";
+import { formatDate } from "./dates.js";
 
 type LoadState = "loading" | "loaded" | "error";
 type SortField = "createdAt" | "ticketNumber" | "summary";
@@ -24,14 +26,31 @@ export default function MyTickets() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [priority, setPriority] = useState<RequestedPriority | "">("");
+  // Lab 4 (ui-spec.md §5) — a status filter that a dashboard card pre-applies
+  // through the URL, shown as removable chips.
+  const [params, setParams] = useSearchParams();
+  const [statuses, setStatuses] = useState<TicketStatus[]>(() =>
+    (params.get("status") ?? "")
+      .split(",")
+      .filter((s): s is TicketStatus => STATUSES.includes(s as TicketStatus))
+  );
+  const statusParam = statuses.join(",");
   const [sort, setSort] = useState<SortField>("createdAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
 
-  const filtersActive = Boolean(search.trim() || priority);
+  const filtersActive = Boolean(search.trim() || priority || statuses.length);
 
   useEffect(() => {
     setPage(1);
-  }, [search, priority]);
+  }, [search, priority, statusParam]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(params);
+    if (statusParam) next.set("status", statusParam);
+    else next.delete("status");
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusParam]);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +58,7 @@ export default function MyTickets() {
     getMyTickets({
       search: search.trim() || undefined,
       requestedPriority: priority || undefined,
+      status: statusParam || undefined,
       sort,
       order,
       page,
@@ -57,11 +77,12 @@ export default function MyTickets() {
     return () => {
       cancelled = true;
     };
-  }, [search, priority, sort, order, page]);
+  }, [search, priority, statusParam, sort, order, page]);
 
   function clearFilters() {
     setSearch("");
     setPriority("");
+    setStatuses([]);
   }
 
   return (
@@ -97,6 +118,27 @@ export default function MyTickets() {
             </select>
           </div>
           <div>
+            <label htmlFor="statusFilter" className="form-label small fw-semibold mb-1">
+              Add status filter
+            </label>
+            <select
+              id="statusFilter"
+              className="form-select"
+              value=""
+              onChange={(e) => {
+                const s = e.target.value as TicketStatus;
+                if (s && !statuses.includes(s)) setStatuses([...statuses, s]);
+              }}
+            >
+              <option value="">Any status</option>
+              {STATUSES.filter((s) => !statuses.includes(s)).map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label htmlFor="sortField" className="form-label small fw-semibold mb-1">
               Sort by
             </label>
@@ -121,6 +163,30 @@ export default function MyTickets() {
           Create Ticket
         </Link>
       </div>
+
+      {statuses.length > 0 && (
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <span className="small fw-semibold">Status:</span>
+          <ul aria-label="Active status filters" className="list-unstyled d-flex flex-wrap gap-2 mb-0">
+            {statuses.map((s) => (
+              <li key={s} className="badge-pale d-inline-flex align-items-center gap-1">
+                {STATUS_LABELS[s]}
+                <button
+                  type="button"
+                  className="btn btn-link btn-sm p-0 lh-1"
+                  aria-label={`Remove filter: ${STATUS_LABELS[s]}`}
+                  onClick={() => setStatuses(statuses.filter((x) => x !== s))}
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="btn btn-link btn-sm" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </div>
+      )}
 
       {state === "loading" && <p role="status">Loading tickets…</p>}
 
@@ -172,9 +238,9 @@ export default function MyTickets() {
                       <Badge tone={priorityTone(t.requestedPriority)}>{t.requestedPriority}</Badge>
                     </td>
                     <td>
-                      <Badge tone="pale">{t.status}</Badge>
+                      <Badge tone={statusTone(t.status)}>{STATUS_LABELS[t.status]}</Badge>
                     </td>
-                    <td>{new Date(t.createdAt).toLocaleDateString()}</td>
+                    <td>{formatDate(t.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -196,8 +262,8 @@ export default function MyTickets() {
                   </div>
                   <p className="mb-1">{t.summary}</p>
                   <div className="d-flex justify-content-between align-items-center">
-                    <Badge tone="pale">{t.status}</Badge>
-                    <small className="text-muted">{new Date(t.createdAt).toLocaleDateString()}</small>
+                    <Badge tone={statusTone(t.status)}>{STATUS_LABELS[t.status]}</Badge>
+                    <small className="text-muted">{formatDate(t.createdAt)}</small>
                   </div>
                 </div>
               </Link>

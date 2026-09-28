@@ -90,12 +90,15 @@ describe("POST /api/tickets/:id/comments", () => {
     expect(res.status).toBe(201);
   });
 
-  it("rejects an Administrator with 403 (read-only on the workflow)", async () => {
+  // Updated in Lab 4 (docs/lab-04/tests.md §3): Lab 3 made the
+  // Administrator read-only on the workflow; Lab 4's revised matrix
+  // (specification.md §4, handout §4.3) gives them IT Staff behavior.
+  it("allows an Administrator to post (Lab 4 revised matrix; was 403 in Lab 3)", async () => {
     const res = await request(app)
       .post(`/api/tickets/${ownTicketId}/comments`)
       .set("Cookie", adminCookie)
-      .send({ content: "Admins don't post comments" });
-    expect(res.status).toBe(403);
+      .send({ content: "Administrator support comment" });
+    expect(res.status).toBe(201);
   });
 
   it("CN-10 ignores a client-supplied authorId/createdAt, always using the backend's own", async () => {
@@ -148,12 +151,13 @@ describe("POST /api/tickets/:id/notes", () => {
     expect(JSON.stringify(res.body)).not.toMatch(/should never get this far/);
   });
 
-  it("rejects an Administrator with 403 (read-only)", async () => {
+  // Updated in Lab 4 (docs/lab-04/tests.md §3) — revised matrix.
+  it("allows an Administrator to create a note (Lab 4 revised matrix; was 403 in Lab 3)", async () => {
     const res = await request(app)
       .post(`/api/tickets/${ownTicketId}/notes`)
       .set("Cookie", adminCookie)
-      .send({ content: "Admins don't create notes" });
-    expect(res.status).toBe(403);
+      .send({ content: "Administrator support note" });
+    expect(res.status).toBe(201);
   });
 });
 

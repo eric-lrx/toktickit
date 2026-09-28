@@ -76,14 +76,19 @@ describe("Shell", () => {
     expect(nav).not.toHaveTextContent("Users");
   });
 
-  it("UI-09 renders only the Administrator nav destination for an Administrator", async () => {
+  // Updated in Lab 4 (docs/lab-04/tests.md §3): the revised matrix gives the
+  // Administrator IT Staff behavior, so My Queue (and Dashboard) join Users;
+  // Requester-only destinations stay hidden.
+  it("UI-09 renders only the Administrator nav destinations for an Administrator", async () => {
     vi.spyOn(api, "getCurrentUser").mockRejectedValue(new Error("no session"));
     renderShell(ADMINISTRATOR);
     const nav = screen.getByRole("navigation");
     expect(await screen.findByText("Barbara Liskov — Administrator")).toBeInTheDocument();
     expect(nav).toHaveTextContent("Users");
+    expect(nav).toHaveTextContent("My Queue");
+    expect(nav).toHaveTextContent("Dashboard");
     expect(nav).not.toHaveTextContent("My Tickets");
-    expect(nav).not.toHaveTextContent("My Queue");
+    expect(nav).not.toHaveTextContent("Create Ticket");
   });
 
   it("UI-10 calls logout and redirects to Login", async () => {

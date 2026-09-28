@@ -43,8 +43,11 @@ test("E2E-01 full login, forced password change, ends on the normal application 
   await page.getByLabel(/confirm new password/i).fill(secondPassword);
   await page.getByRole("button", { name: /^continue$/i }).click();
 
-  await expect(page.getByRole("link", { name: "My Tickets" })).toBeVisible();
-  await expect(page).toHaveURL(/\/tickets$/);
+  // Updated in Lab 4 (docs/lab-04/tests.md §3): every role now lands on the
+  // Dashboard, whose "View My Tickets" quick action also matches a loose
+  // "My Tickets" name, so the check is scoped to the main navigation.
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "My Tickets" })).toBeVisible();
+  await expect(page).toHaveURL(/\/dashboard$/);
 });
 
 // E2E-02 (AC-07) — after logout, neither back-navigation nor a direct URL
@@ -52,14 +55,16 @@ test("E2E-01 full login, forced password change, ends on the normal application 
 // client-side and its jti revoked server-side (session.ts).
 test("E2E-02 after logout, the app cannot be reused via back-navigation or a direct URL", async ({ page }) => {
   await loginAs(page, REQUESTER_GRACE);
-  await expect(page.getByRole("link", { name: "My Tickets" })).toBeVisible();
+  // Scoped to the main navigation in Lab 4 (docs/lab-04/tests.md §3) — see E2E-01.
+  const myTicketsNav = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "My Tickets" });
+  await expect(myTicketsNav).toBeVisible();
 
   await page.getByRole("button", { name: /^logout$/i }).click();
   await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
 
   await page.goBack();
   await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: "My Tickets" })).toHaveCount(0);
+  await expect(myTicketsNav).toHaveCount(0);
 
   await page.goto("/tickets");
   await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
