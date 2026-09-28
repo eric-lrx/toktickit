@@ -86,6 +86,9 @@ function AuthenticatedApp() {
           </>
         )}
         {user.role === "ADMINISTRATOR" && <Route path="/admin/users" element={<UserManagement />} />}
+        {/* ui-spec §2.4, §6 — another role's route, or an unknown one, goes to
+            the user's own dashboard instead of rendering an empty page. */}
+        <Route path="*" element={<Navigate to={ROLE_HOME[user.role]} replace />} />
       </Routes>
     </Shell>
   );
