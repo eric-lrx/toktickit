@@ -45,6 +45,12 @@ const INACTIVE_IT_STAFF = { name: "Nolan Inactive", email: "nolan.inactive@tokti
 // Lab 3 §5.3 — at least one active Administrator.
 const ACTIVE_ADMINISTRATORS = [{ name: "Barbara Liskov", email: "barbara.liskov@toktickit.com" }];
 
+// Lab 4 §5.3 — one Requester and one IT Staff user who own nothing, have
+// nothing assigned, and never get Actions Taken, so zero dashboard metrics
+// can be demonstrated next to non-zero ones.
+const ZERO_DATA_REQUESTER = { name: "Zoe Empty", email: "zoe.empty@example.com" };
+const ZERO_DATA_IT_STAFF = { name: "Zed Empty", email: "zed.empty@toktickit.com" };
+
 async function main() {
   const prisma = getPrisma();
   const passwordHash = await hashPassword(SEED_INITIAL_PASSWORD);
@@ -102,9 +108,22 @@ async function main() {
     });
   }
   console.log(`Seeded ${ACTIVE_ADMINISTRATORS.length} active Administrator.`);
+
+  await prisma.user.upsert({
+    where: { email: ZERO_DATA_REQUESTER.email },
+    update: {},
+    create: { ...ZERO_DATA_REQUESTER, isActive: true, role: "REQUESTER", passwordHash, mustChangePassword: true },
+  });
+  await prisma.user.upsert({
+    where: { email: ZERO_DATA_IT_STAFF.email },
+    update: {},
+    create: { ...ZERO_DATA_IT_STAFF, isActive: true, role: "IT_STAFF", passwordHash, mustChangePassword: true },
+  });
+  console.log("Seeded 1 zero-data Requester + 1 zero-data IT Staff user.");
   console.log(`All seeded accounts use the documented local-dev initial password (README.md).`);
 
   await seedTickets(prisma);
+  await seedActionsTaken(prisma);
 }
 
 // Lab 3 §5.3 — realistic Tickets distributed across Requesters, statuses,
@@ -245,6 +264,42 @@ async function seedTickets(prisma: ReturnType<typeof getPrisma>) {
       status: "OPEN",
       owner: administrator,
     },
+    // Lab 4 — gives Ada a Ticket in every Requester dashboard bucket.
+    {
+      n: 11,
+      requester: ada,
+      category: accountAccess,
+      related: email,
+      summary: "Shared mailbox access request needs manager approval",
+      requestedPriority: "LOW",
+      itPriority: "LOW",
+      status: "WAITING_FOR_REQUESTER",
+      owner: katherine,
+    },
+    {
+      n: 12,
+      requester: ada,
+      category: software,
+      related: laptop,
+      summary: "Office suite license expired on corporate laptop",
+      requestedPriority: "MEDIUM",
+      itPriority: "MEDIUM",
+      status: "RESOLVED",
+      owner: margaret,
+      resolutionSummary: "Renewed the license and reactivated the suite.",
+    },
+    {
+      n: 13,
+      requester: ada,
+      category: hardware,
+      related: printer,
+      summary: "Toner replacement for the lab printer",
+      requestedPriority: "LOW",
+      itPriority: "LOW",
+      status: "CLOSED",
+      owner: radia,
+      resolutionSummary: "Replaced the toner cartridge.",
+    },
   ] as const;
 
   for (const t of seedTicketsData) {
@@ -264,10 +319,78 @@ async function seedTickets(prisma: ReturnType<typeof getPrisma>) {
         status: t.status,
         ticketOwnerId: t.owner?.id ?? null,
         resolutionSummary: "resolutionSummary" in t ? t.resolutionSummary : null,
+        // BR-16 — a freshly seeded RESOLVED/CLOSED Ticket needs resolvedAt
+        // too (the migration backfill only covers rows that already existed).
+        resolvedAt: t.status === "RESOLVED" || t.status === "CLOSED" ? new Date() : null,
       },
     });
   }
   console.log(`Seeded ${seedTicketsData.length} realistic Tickets across statuses, priorities, and ownership.`);
+}
+
+// Lab 4 §5.3 — Tickets with zero, one, and several Actions Taken, every
+// Action status, and at least one PLANNED action on an unresolved Ticket
+// (TKT-9999-000002) so the resolution gate can be demonstrated live. Resolved
+// and closed Tickets only carry COMPLETED/CANCELLED actions, consistent with
+// the gate. ActionTaken has no natural unique key, so (ticketId, description)
+// is the idempotency key here: an existing pair is never recreated.
+async function seedActionsTaken(prisma: ReturnType<typeof getPrisma>) {
+  const byEmail = async (email: string) => prisma.user.findUniqueOrThrow({ where: { email } });
+  const margaret = await byEmail("margaret.hamilton@toktickit.com");
+  const katherine = await byEmail("katherine.johnson@toktickit.com");
+  const radia = await byEmail("radia.perlman@toktickit.com");
+  const barbara = await byEmail("barbara.liskov@toktickit.com");
+
+  const day = 24 * 60 * 60 * 1000;
+  const daysAgo = (n: number) => new Date(Date.now() - n * day);
+
+  const actions = [
+    // #2 OPEN — one PLANNED action: blocks resolution (gate demo).
+    { n: 2, by: margaret, assignee: margaret, at: daysAgo(1), status: "PLANNED", description: "Check the library access point logs for disconnect events" },
+    // #3 IN_PROGRESS — several actions in several statuses, by two staff members (BR-02).
+    { n: 3, by: margaret, assignee: margaret, at: daysAgo(4), status: "COMPLETED", description: "Ran hardware diagnostics on the laptop", result: "Disk and memory pass; login service fails to start" },
+    { n: 3, by: katherine, assignee: katherine, at: daysAgo(3), status: "IN_PROGRESS", description: "Reimage the login service configuration" },
+    { n: 3, by: margaret, assignee: margaret, at: daysAgo(2), status: "PLANNED", description: "Confirm the fix with the Requester after reimage", followUpRequired: true, followUpNote: "Call the Requester once the reimage is done" },
+    { n: 3, by: margaret, assignee: null, at: daysAgo(2), status: "CANCELLED", description: "Order a replacement laptop" },
+    // #4 WAITING — one completed action that needs a follow-up.
+    { n: 4, by: katherine, assignee: katherine, at: daysAgo(2), status: "COMPLETED", description: "Reset the email password and sent a temporary one", result: "Temporary password issued", followUpRequired: true, followUpNote: "Waiting for the Requester to confirm login", attachmentNotes: "See reset-confirmation.png on the Ticket" },
+    // #5 RESOLVED — all actions terminal.
+    { n: 5, by: katherine, assignee: katherine, at: daysAgo(6), status: "COMPLETED", description: "Tested the battery with the vendor tool", result: "Battery health at 41%" },
+    { n: 5, by: katherine, assignee: katherine, at: daysAgo(5), status: "COMPLETED", description: "Replaced the battery", result: "Runtime back to 6+ hours" },
+    { n: 5, by: radia, assignee: null, at: daysAgo(5), status: "CANCELLED", description: "Loan a spare laptop" },
+    // #6 CLOSED — one completed action.
+    { n: 6, by: radia, assignee: radia, at: daysAgo(8), status: "COMPLETED", description: "Issued a renewed VPN certificate", result: "Remote access confirmed" },
+    // #7 REOPENED — earlier work completed, new work planned.
+    { n: 7, by: radia, assignee: radia, at: daysAgo(7), status: "COMPLETED", description: "Fixed the CSV delimiter setting", result: "Test upload accepted" },
+    { n: 7, by: radia, assignee: radia, at: daysAgo(1), status: "PLANNED", description: "Investigate the rejected upload reported after reopening" },
+    // #10 OPEN — Administrator doing IT Staff work (revised matrix).
+    { n: 10, by: barbara, assignee: barbara, at: daysAgo(1), status: "IN_PROGRESS", description: "Review the endpoint security alert details" },
+    // #12 RESOLVED — one completed action.
+    { n: 12, by: margaret, assignee: margaret, at: daysAgo(3), status: "COMPLETED", description: "Renewed the office suite license", result: "Suite activated" },
+  ] as const;
+
+  let created = 0;
+  for (const a of actions) {
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { ticketNumber: `TKT-9999-${String(a.n).padStart(6, "0")}` } });
+    const exists = await prisma.actionTaken.findFirst({ where: { ticketId: ticket.id, description: a.description } });
+    if (exists) continue;
+    await prisma.actionTaken.create({
+      data: {
+        ticketId: ticket.id,
+        performedById: a.by.id,
+        assigneeId: a.assignee?.id ?? null,
+        actionAt: a.at,
+        description: a.description,
+        result: "result" in a ? a.result : null,
+        status: a.status,
+        followUpRequired: "followUpRequired" in a ? a.followUpRequired : false,
+        followUpNote: "followUpNote" in a ? a.followUpNote : null,
+        attachmentNotes: "attachmentNotes" in a ? a.attachmentNotes : null,
+      },
+    });
+    created++;
+  }
+  console.log(`Seeded Actions Taken: ${created} new, ${actions.length - created} already present.`);
 }
 
 main()

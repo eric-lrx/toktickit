@@ -20,6 +20,7 @@ import {
   signSession,
 } from "./session.js";
 import { allowedTransitions, isAllowedTransition } from "./statusTransitions.js";
+import { registerActionsTakenRoutes } from "./actionsTaken.js";
 
 // Issue 34 — every Requester route requires both a session (401 if absent)
 // and the REQUESTER role (403 for any other authenticated role); ownership
@@ -1052,6 +1053,9 @@ app.get("/api/tickets/:id/notes", ...requireStaffRead, async (req: AuthedRequest
     res.status(500).json({ error: { message: "Unable to load notes" } });
   }
 });
+
+// Lab 4, Issue 23 — Actions Taken (docs/lab-04/api-spec.md).
+registerActionsTakenRoutes(app);
 
 // ---------------------------------------------------------------------------
 // Issue 38 — Administrator user management.
