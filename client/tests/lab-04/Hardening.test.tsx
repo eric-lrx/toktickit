@@ -159,3 +159,47 @@ describe("Session after back-forward cache restore (root cause of Lab 3 E2E-02's
     expect(spy).toHaveBeenCalledTimes(2);
   });
 });
+
+// ui-spec.md §2.4 and §6: a route the role may not use redirects to that
+// role's dashboard. Before this fix an unmatched path rendered an empty page.
+describe("Routes outside the role (ui-spec §2.4, §6)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.history.pushState({}, "", "/");
+  });
+
+  const REQUESTER = { id: 1, name: "Ada Lovelace", email: "a@example.com", role: "REQUESTER" as const, mustChangePassword: false };
+  const IT_STAFF = { id: 2, name: "Margaret Hamilton", email: "m@toktickit.com", role: "IT_STAFF" as const, mustChangePassword: false };
+
+  async function openAs(user: api.AuthUser, path: string) {
+    const { default: AppRoot } = await import("../../src/AppRoot.js");
+    vi.spyOn(api, "getCurrentUser").mockResolvedValue(user);
+    const requesterDashboard = vi.spyOn(api, "getRequesterDashboard").mockReturnValue(new Promise(() => {}));
+    const staffDashboard = vi.spyOn(api, "getStaffDashboard").mockReturnValue(new Promise(() => {}));
+    window.history.pushState({}, "", path);
+    render(<AppRoot />);
+    return { requesterDashboard, staffDashboard };
+  }
+
+  it.each(["/queue", "/queue/5", "/admin/users", "/no-such-page"])(
+    "UI-24 sends a Requester who opens %s to the Requester dashboard",
+    async (path) => {
+      const { requesterDashboard, staffDashboard } = await openAs(REQUESTER, path);
+      await waitFor(() => expect(window.location.pathname).toBe("/dashboard"));
+      expect(await screen.findByText("Ada Lovelace — Requester")).toBeInTheDocument();
+      expect(requesterDashboard).toHaveBeenCalled();
+      expect(staffDashboard).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["/admin/users", "/tickets/new", "/no-such-page"])(
+    "UI-24 sends IT Staff who open %s to the IT Staff dashboard",
+    async (path) => {
+      const { requesterDashboard, staffDashboard } = await openAs(IT_STAFF, path);
+      await waitFor(() => expect(window.location.pathname).toBe("/dashboard"));
+      expect(await screen.findByText("Margaret Hamilton — IT Staff")).toBeInTheDocument();
+      expect(staffDashboard).toHaveBeenCalled();
+      expect(requesterDashboard).not.toHaveBeenCalled();
+    }
+  );
+});

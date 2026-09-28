@@ -1,6 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
 import path from "path";
-import { API_URL, ADMIN_BARBARA, clickNavLink, loginAs, STAFF_MARGARET } from "../lab-03/helpers.js";
+import { API_URL, ADMIN_BARBARA, clickNavLink, loginAs, REQUESTER_ADA, STAFF_MARGARET } from "../lab-03/helpers.js";
 
 // E2E-10 (AC-27, handout Part 8) — one walk through every Lab 1–3 capability the
 // final report must show still working after Lab 4, with a screenshot of each
@@ -123,5 +123,31 @@ test("E2E-10 Lab 1–3 regression walk: authentication, My Tickets, Ticket Detai
 
   await staffContext.close();
   await adminContext.close();
+  expect(errors, `console errors: ${errors.join(" | ")}`).toEqual([]);
+});
+
+// E2E-11 (ui-spec §2.4, §6) — typing another role's URL, or one that does not
+// exist, lands on the user's own dashboard instead of an empty page.
+test("E2E-11 another role's URL or an unknown URL redirects to the user's own dashboard", async ({ page, browser }) => {
+  const errors: string[] = [];
+  watchConsole(page, errors);
+  await loginAs(page, REQUESTER_ADA);
+  for (const url of ["/queue", "/queue/1", "/admin/users", "/no-such-page"]) {
+    await page.goto(url);
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^My Open Tickets: \d+, view all$/ })).toBeVisible();
+  }
+
+  const staffContext = await browser.newContext();
+  const staff = await staffContext.newPage();
+  watchConsole(staff, errors);
+  await loginAs(staff, STAFF_MARGARET);
+  for (const url of ["/admin/users", "/tickets/new", "/no-such-page"]) {
+    await staff.goto(url);
+    await expect(staff).toHaveURL(/\/dashboard$/);
+    await expect(staff.getByRole("link", { name: /^Unassigned: \d+, view all$/ })).toBeVisible();
+  }
+  await staffContext.close();
   expect(errors, `console errors: ${errors.join(" | ")}`).toEqual([]);
 });
