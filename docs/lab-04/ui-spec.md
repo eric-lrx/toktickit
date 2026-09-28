@@ -9,7 +9,7 @@ for Lab 4 is specified here. Lab 4 screens reuse the existing components (`Badge
 Tokens referenced below come from `client/src/theme.css`: `--zg-primary` #006b3c,
 `--zg-secondary` #0b7a46, `--zg-pale` #eaf6ef, `--zg-surface` #ffffff,
 `--zg-surface-border` #dde5e1, `--zg-field-bg` #ffffff, `--zg-readonly-bg` #f1efe6,
-`--zg-warning-bg` #fcefd1, `--zg-warning-text` #a66a00, `--zg-error` #8a1f1f,
+`--zg-warning-bg` #fcefd1, `--zg-warning-text` #8f5b00 (darkened in Lab 4 from #a66a00, see §9), `--zg-error` #8a1f1f,
 `--zg-success` #0b7a46, `--zg-text` #1e2b25, `--zg-bg` #f5f7f6.
 
 ## 1. Application shell (changed)
@@ -174,28 +174,74 @@ ring is faint on this theme — Lab 4 replaces it with a 3px `--zg-primary` outl
 close; color is never the only signal; no clipped content, overlapping controls, or
 horizontal page scroll at 375px, 768px, and 1280px.
 
-## 8. Visual inspection checklist — to complete in Issue 29
+## 8. Visual inspection checklist — completed in Issue 29
 
-- [ ] Dashboards, Actions Taken, and workflow controls use the existing tokens and
-      components (no new colors outside `theme.css`).
-- [ ] Role navigation shows only permitted destinations, with the active page marked.
-- [ ] Metric cards: label, count, and drill-down readable at all three widths.
-- [ ] Actions Taken and Internal Notes are clearly different on the staff Ticket
-      Detail; Internal Notes absent from the Requester Ticket Detail.
-- [ ] Status, IT Priority, and Action status badges are consistent across every screen.
-- [ ] Editable vs read-only fields distinguishable at a glance in the Action form.
-- [ ] Validation messages appear under their field, including server rejections
-      (assignee, follow-up note, result).
-- [ ] No clipping, overlap, or horizontal scroll at desktop, tablet, and mobile.
+Evidence: `e2e/lab-04/responsive.spec.ts` (RESP-01, RESP-02, STYLE-01, STYLE-05,
+A11Y-01), `client/tests/lab-04/zen-green.style.test.tsx` (STYLE-02–STYLE-04), the
+E2E specs, and the screenshots under `artifacts/lab-04/screenshots/`
+(staff-dashboard, requester-dashboard, actions-taken, ticket-workflow,
+regression — desktop 1280, tablet 768, mobile 375), each re-inspected after the
+last change.
 
-## 9. Accessibility checklist — to complete in Issue 29
+- [x] Dashboards, Actions Taken, and workflow controls use the existing tokens and
+      components. STYLE-01 reads the metric card's computed colors in a real
+      browser (surface `rgb(255,255,255)`, border `rgb(221,229,225)`, text
+      `rgb(30,43,37)`, count weight 700). The only token change in Lab 4 is
+      `--zg-warning-text` (see §9), which is documented.
+- [x] Role navigation shows only permitted destinations, with the active page
+      marked. UI-20 (Dashboard first for all three roles; the Administrator also
+      gets My Queue), Lab 3 UI-09 updated, and `aria-current` kept (Lab 2 AppShell
+      test).
+- [x] Metric cards: label, count, and drill-down readable at all three widths.
+      RESP-01 asserts 5/3/2 columns (staff) and 4/3/2 (Requester), no horizontal
+      scroll; screenshots `staff-dashboard/*.png`, `requester-dashboard/*.png`.
+- [x] Actions Taken and Internal Notes are clearly different on the staff Ticket
+      Detail; Internal Notes absent from the Requester Ticket Detail. STYLE-03,
+      UI-14, E2E-03, and E2E-10's `07-requester-view-no-internal-note.png`.
+- [x] Status, IT Priority, and Action status badges are consistent across every
+      screen. Found and fixed in Issue 28: My Tickets showed raw `NEW` in one
+      pale tone; it now uses the shared labels and tones. STYLE-02 covers the four
+      Action statuses.
+- [x] Editable vs read-only fields distinguishable at a glance in the Action form.
+      STYLE-04 (`--zg-field-bg` vs `--zg-readonly-bg`), visible in
+      `actions-taken/several-actions-one-ticket.png`.
+- [x] Validation messages appear under their field, including server rejections.
+      UI-10/UI-11 and E2E-02: a server-rejected inactive assignee shows "Choose an
+      active IT Staff member or Administrator." under Assignee, linked with
+      `aria-describedby`. This closes the caveat recorded in Lab 3's checklist
+      (server rejections used to appear only as a form-level message).
+- [x] No clipping, overlap, or horizontal scroll at desktop, tablet, and mobile.
+      Asserted programmatically in RESP-01/RESP-02 and the Issue 24–27 checks. Two
+      defects were found in screenshots and fixed: a duplicated "by <performer>"
+      line on desktop, and badges stretched across list rows on mobile.
 
-- [ ] Every Lab 4 screen is fully operable with the keyboard alone.
-- [ ] Focus is visible on every interactive element, including cards and menu items.
-- [ ] Dashboard cards announce label, count, and destination.
-- [ ] Form fields have labels; required fields are announced as required.
-- [ ] Errors are announced (`role="alert"`) and linked to their field
-      (`aria-describedby`).
-- [ ] The cancel-action dialog traps focus, closes with Escape, and returns focus.
-- [ ] Status and priority information never relies on color alone.
-- [ ] Text contrast meets WCAG AA on cards, badges, and the Actions Taken section.
+## 9. Accessibility checklist — completed in Issue 29
+
+- [x] Every Lab 4 screen is fully operable with the keyboard alone. A11Y-01
+      creates an Action and opens and dismisses the cancel dialog using only Tab,
+      Enter, typing, and Escape.
+- [x] Focus is visible on every interactive element, including cards and menu
+      items. STYLE-05 reads the computed outline on a keyboard-focused metric card:
+      `rgb(0, 107, 60) solid 3px`. Screenshot: `staff-dashboard/keyboard-focus.png`.
+      This replaces Bootstrap's faint default ring noted in Lab 3.
+- [x] Dashboard cards announce label, count, and destination. Every card link's
+      accessible name is "<label>: <count>, view all" (UI-01, E2E-07–E2E-09
+      select them by that name).
+- [x] Form fields have labels; required fields are announced as required. Every
+      Action form control is found by its label in the tests, and required fields
+      carry the `required` attribute (UI-10 asserts it on the follow-up note).
+- [x] Errors are announced (`role="alert"`) and linked to their field
+      (`aria-describedby`). `FormField` now gives each error an id (UI-11).
+- [x] The cancel-action dialog traps focus, closes with Escape, and returns focus.
+      UI-12 (Escape) and A11Y-01 (focus starts on "Keep action" and returns to
+      "Cancel action" on close).
+- [x] Status and priority information never relies on color alone. Every badge
+      carries its text label (STYLE-02), and blocking actions carry the words
+      "Blocking resolution".
+- [x] Text contrast meets WCAG AA on cards, badges, and the Actions Taken section.
+      Computed ratios: body text on surface 14.71:1, secondary on surface 5.40:1,
+      Planned badge 4.87:1, error text 9.14:1, header nav 6.63:1. **Found and
+      fixed:** the warning badge text (In Progress, Waiting for Requester,
+      Reopened, MEDIUM) was 3.93:1 on its background — below AA for small text
+      since Lab 2. `--zg-warning-text` was darkened from `#a66a00` to `#8f5b00`
+      (5.02:1), same hue.

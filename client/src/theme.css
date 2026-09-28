@@ -12,7 +12,9 @@
   --zg-field-border: #c7d2cc;
   --zg-readonly-bg: #f1efe6;
   --zg-error: #8a1f1f;
-  --zg-warning-text: #a66a00;
+  /* Lab 4: darkened from #a66a00 (3.93:1 on --zg-warning-bg, below WCAG AA
+     for small badge text) to reach 5.02:1; same hue. */
+  --zg-warning-text: #8f5b00;
   --zg-warning-bg: #fcefd1;
   --zg-success: #0b7a46;
 }
