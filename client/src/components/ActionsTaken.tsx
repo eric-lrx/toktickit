@@ -32,6 +32,7 @@ interface Props {
   staffUsers?: StaffUser[];
   // Issue 25 — actions named by a RESOLUTION_BLOCKED response.
   highlightIds?: number[];
+  onActionsLoaded?: (actions: ActionTaken[]) => void;
 }
 
 type Selection = { kind: "none" } | { kind: "new" } | { kind: "view"; id: number };
@@ -39,17 +40,22 @@ type Selection = { kind: "none" } | { kind: "new" } | { kind: "view"; id: number
 // ui-spec.md §3 (staff) and §5 (Requester, read-only). One DOM structure: the
 // table turns into stacked cards below 768px through CSS (theme.css
 // `.actions-table`), so there is a single list to keep in sync and test.
-export default function ActionsTaken({ ticketId, ticketStatus, mode, staffUsers = [], highlightIds = [] }: Props) {
+export default function ActionsTaken({ ticketId, ticketStatus, mode, staffUsers = [], highlightIds = [], onActionsLoaded }: Props) {
   const [loadState, setLoadState] = useState<"loading" | "loaded" | "error">("loading");
   const [loadError, setLoadError] = useState("");
   const [actions, setActions] = useState<ActionTaken[]>([]);
   const [selection, setSelection] = useState<Selection>({ kind: "none" });
   const [formKey, setFormKey] = useState(0);
 
+  const onLoadedRef = useRef(onActionsLoaded);
+  onLoadedRef.current = onActionsLoaded;
+
   const load = useCallback(async () => {
     try {
-      setActions(await getTicketActions(ticketId));
+      const loaded = await getTicketActions(ticketId);
+      setActions(loaded);
       setLoadState("loaded");
+      onLoadedRef.current?.(loaded);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Unable to load actions. Please try again.");
       setLoadState("error");

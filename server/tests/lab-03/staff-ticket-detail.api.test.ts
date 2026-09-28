@@ -144,13 +144,16 @@ describe("PATCH /api/staff/tickets/:id/owner", () => {
     expect(res.status).toBe(403);
   });
 
-  it("AUTHZ-11 rejects an Administrator (read-only) with 403", async () => {
+  // Updated in Lab 4 (docs/lab-04/tests.md §3) — revised matrix: the
+  // Administrator now performs IT Staff behavior (was 403 in Lab 3).
+  it("AUTHZ-11 lets an Administrator claim/reassign (Lab 4 revised matrix)", async () => {
     const ticket = await createFixtureTicket();
     const res = await request(app)
       .patch(`/api/staff/tickets/${ticket.id}/owner`)
       .set("Cookie", adminCookie)
-      .send({ ticketOwnerId: staffId });
-    expect(res.status).toBe(403);
+      .send({ ticketOwnerId: otherStaffId });
+    expect(res.status).toBe(200);
+    expect(res.body.data.ticketOwnerId).toBe(otherStaffId);
   });
 });
 
@@ -231,13 +234,15 @@ describe("PATCH /api/staff/tickets/:id/status", () => {
     expect(res.status).toBe(403);
   });
 
-  it("AUTHZ-11 rejects an Administrator's status change attempt with 403", async () => {
+  // Updated in Lab 4 (docs/lab-04/tests.md §3) — revised matrix.
+  it("AUTHZ-11 lets an Administrator change status (Lab 4 revised matrix)", async () => {
     const ticket = await createFixtureTicket({ status: "NEW" });
     const res = await request(app)
       .patch(`/api/staff/tickets/${ticket.id}/status`)
       .set("Cookie", adminCookie)
       .send({ status: "OPEN" });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe("OPEN");
   });
 });
 
