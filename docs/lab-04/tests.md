@@ -195,6 +195,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | UI-21 | UI component | AC-25, FR-17 | Double click on "Save Action" | One request; submit disabled while in flight; `Idempotency-Key` sent | client/tests/lab-04/Hardening.test.tsx | Pass |
 | UI-22 | UI component | AC-26, FR-18 | Network failure on Create Ticket, Action form, comment box | Every entered value kept | client/tests/lab-04/Hardening.test.tsx | Pass |
 | UI-23 | UI component | FR-16 (added in Issue 28) | Page restored from the back-forward cache | The session is checked again (no page stuck on "Loading…") | client/tests/lab-04/Hardening.test.tsx | Pass |
+| UI-24 | UI component | FR-19, AC-30 (added after release) | Requester opens a staff or unknown URL; IT Staff opens an Administrator, Requester or unknown URL | Redirected to the user's own dashboard, only that role's dashboard data is requested | client/tests/lab-04/Hardening.test.tsx | Pass |
 
 ### UI style (`client/tests/lab-04/zen-green.style.test.tsx`)
 
@@ -223,6 +224,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | E2E-08 | E2E | AC-02, AC-21 | Requester dashboard card → My Tickets | Filtered list total equals the card count; only own Tickets | e2e/lab-04/dashboards.spec.ts | Pass |
 | E2E-09 | E2E | AC-20 | Zero-data seeded users log in | Zero cards; drill-down reaches no-results | e2e/lab-04/dashboards.spec.ts | Pass |
 | E2E-10 | E2E | AC-27 | Visual regression walk: authentication, My Tickets, Ticket Detail, Attachments, Public Comments, IT Staff functions, Internal Notes, User Management | Each screen works; screenshots saved | e2e/lab-04/regression.spec.ts | Pass |
+| E2E-11 | E2E | FR-19, AC-30 (added after release) | Another role's URL or an unknown URL typed in the address bar | Lands on the user's own dashboard, no console errors | e2e/lab-04/regression.spec.ts | Pass |
 
 ## 3. Regression — Labs 1 to 3
 
@@ -292,6 +294,7 @@ same PR as the behavior change, and the test then asserts the new rule.
 | AC-27 | REG-01, REG-02, REG-03, E2E-10 |
 | AC-28 | HARD-04 |
 | AC-29 | UI-14, STYLE-03, E2E-03 |
+| AC-30 | UI-24, E2E-11 |
 
 ## 5. Final Results
 
@@ -715,3 +718,20 @@ and stronger than before.
 
 After the fix: 40/40 under a 5-worker stress repeat, and **33/33 on 8
 consecutive full runs**.
+
+## 8. Post-release fix — routes outside the role
+
+Found while producing the report evidence: a Requester who typed `/queue` (or any
+path not registered for their role, or no path at all) got an empty page under
+the app shell. No data was exposed and every staff API still answered 403, but
+`ui-spec.md` §2.4 and §6 require a redirect to the role's dashboard, so the
+screen broke FR-19. UI-24 and E2E-11 were written first and failed on the
+unchanged URL (7/7 and 1/1). The fix adds one catch-all route in `AppRoot.tsx`
+that redirects to the role's home. AC-30 is added to the specification.
+
+| Suite | Result after the fix |
+|---|---|
+| Server | **267/267** (unchanged) |
+| Client (`tsc --noEmit` clean) | **108/108**: UI-24 adds 7 cases |
+| Playwright | **34/34**: E2E-11 added |
+

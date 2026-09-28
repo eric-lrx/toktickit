@@ -465,6 +465,9 @@ found `404`, invalid input `400`, state conflict `409`.
   data is returned.
 - **AC-29** Given an Internal Note on a Ticket, when its owning Requester views the
   Ticket (including its Actions Taken), then the note appears nowhere.
+- **AC-30** (added after release, tests.md §8) Given a signed-in user, when they open
+  a route their role may not use or one that does not exist, then they land on their
+  own role's dashboard instead of an empty page.
 
 ## 10. Definition of Done
 
