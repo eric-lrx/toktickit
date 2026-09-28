@@ -230,9 +230,9 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| REG-01 | Regression | AC-27 | All Lab 1–3 server tests | All pass (166 before this sprint) | server/tests/lab-01, lab-02, lab-03 | Pass (166/166 on the final branch; re-run from `main` after the release merge) |
-| REG-02 | Regression | AC-27 | All Lab 1–3 client tests | All pass (62 before this sprint) | client/tests/lab-01, lab-02, lab-03 | Pass (62/62 on the final branch; re-run from `main` after the release merge) |
-| REG-03 | Regression | AC-27 | All Lab 2–3 Playwright tests | All pass (17 before this sprint) | e2e/lab-02, e2e/lab-03 | Pass (17/17 on the final branch; re-run from `main` after the release merge) |
+| REG-01 | Regression | AC-27 | All Lab 1–3 server tests | All pass (166 before this sprint) | server/tests/lab-01, lab-02, lab-03 | Pass — 166/166 from `main` (3bbf106) |
+| REG-02 | Regression | AC-27 | All Lab 1–3 client tests | All pass (62 before this sprint) | client/tests/lab-01, lab-02, lab-03 | Pass — 62/62 from `main` (3bbf106) |
+| REG-03 | Regression | AC-27 | All Lab 2–3 Playwright tests | All pass (17 before this sprint) | e2e/lab-02, e2e/lab-03 | Pass after the E2E-02 fix — 17/17 on 8 consecutive full runs; from `main` (3bbf106): 16/17, E2E-02 failed (see Release section) |
 
 Baseline recorded on 2026-09-26 from `main` (`a46958b`) before any Lab 4 change:
 166/166 server, 62/62 client, 17/17 E2E, `tsc --noEmit` clean in both packages.
@@ -257,6 +257,7 @@ same PR as the behavior change, and the test then asserts the new rule.
 | STAFF-Q-07 ownerId filter | server/tests/lab-03/staff-queue.api.test.ts (l.106) | Seeded Margaret-owned Tickets on page 1 of *all* her Tickets | Same assertions, scoped with `search=TKT-9999` | Test isolation: 51 of the 54 newer Margaret-owned Tickets came from Lab 3's own claim tests, so it was failing on its own | 25 (done) |
 | UI-14 Claim call arguments; staff detail fixtures | client/tests/lab-03/StaffTicketDetail.test.tsx (l.18, l.63–71, l.92), client/tests/lab-03/zen-green.style.test.tsx (l.52) | `setTicketOwner(1, userId)`; fixture without Lab 4 fields | `setTicketOwner(1, userId, 1)`; fixtures carry `version`, `resolvedAt`, `allowedTransitions` matching their status | Contract change: the UI always sends the version it read (BR-21) and renders the API's `allowedTransitions` | 25 (done) |
 | STAFF-Q-09 combined filters | server/tests/lab-03/staff-queue.api.test.ts (l.133) | Seeded OPEN+HIGH Tickets on page 1 of *all* OPEN+HIGH Tickets | Same assertions, scoped with `search=TKT-9999` | Test isolation, same class as STAFF-Q-04/07: 52 newer OPEN+HIGH Tickets (29 from Lab 3's own E2E-04, one per run; 22 from Lab 4 fixtures) — measured before the change | 28 (done) |
+| E2E-02 back-navigation after logout | e2e/lab-03/authentication.spec.ts (l.56) | Logout, then Back, expected to land on an app page | Visits My Tickets before logout, so Back stays inside the app document and returns to a protected page (`/dashboard`), which must still show Sign In | Captured trace: in its intermittent failure, Back crossed documents and landed on `about:blank`, where no Sign In button can exist. The assertion is unchanged and now stronger (the Back target is a protected page) | post-release fix |
 
 ## 4. Acceptance Criteria traceability
 
@@ -585,6 +586,12 @@ comment cases.
    5-worker stress repeat, and 1 failure in 30 full-suite runs (down from about 1
    in 7). That remaining failure was not captured with a trace, so the fix is
    reported as addressing a real cause, not as proven complete.
+   **Correction, after the release (see "Release — run from `main`"):** a
+   later failure was captured with its trace, and it shows Back landing on
+   `about:blank`, an entry from before the app document, not on a page stuck
+   on "Loading…". The back-forward-cache re-check stays, because it is
+   harmless and guards a real case, but it was not the cause of E2E-02. The
+   test itself was fixed instead.
 3. *ECONNRESET on one login request* under parallel load: Node's default 5 s
    keep-alive closed a socket at the moment the client reused it. The server now
    keeps idle sockets for 65 s (headers timeout above it, as Node requires).
@@ -675,6 +682,36 @@ the first merge. Then re-run all three suites from `main` and record them here a
 REG-01–REG-03's final evidence.
 
 Known open items, recorded rather than hidden:
-- One Lab 3 E2E-02 failure in 30 full runs after its root-cause fix (Issue 28),
-  never since in 7 further full runs, and no trace captured.
+- ~~One Lab 3 E2E-02 failure in 30 full runs after its root-cause fix~~.
+  Resolved after the release: see §7. The trace showed Back landing on
+  `about:blank`, and the test was fixed to stay within the app document.
 - One Lab 3 CN-07 `401` in a full server run, never reproduced in 22 later runs.
+
+
+## 7. Release — run from `main`
+
+The release PR #71 (`lab4-staging → main`, approved by marcoumarc) was merged on
+2026-09-28 and closed Issues #55–#62. The full campaign was then re-run from
+`main` at `3bbf106`. The full outputs are kept outside the repository with the
+report evidence:
+
+| Suite | Result from `main` |
+|---|---|
+| Server (`tsc --noEmit` clean) | **267/267** — Lab 1: 2, Lab 2: 36, Lab 3: 128, Lab 4: 101 |
+| Client (`tsc --noEmit` clean) | **101/101** — Lab 1: 3, Lab 2: 22, Lab 3: 37, Lab 4: 39 |
+| Playwright | **32/33** — Lab 3's E2E-02 failed |
+
+**E2E-02, analyzed from its trace this time.** After logout, the test's Back
+navigation landed on `about:blank`, the tab's first history entry, before the
+app had loaded, where no Sign In button can exist. It did not land on an app page
+stuck on "Loading…", which contradicts the Issue 28 diagnosis, corrected there. A
+deliberate attempt to force the suspected browser condition did not reproduce
+it, so the exact reason Chrome skipped the intermediate entry is not established.
+
+The fix removes the dependency on it. The test now visits My Tickets before
+logging out, so Back stays inside the app document and returns to a protected
+page (`/dashboard`), which must still show Sign In. The assertion is unchanged
+and stronger than before.
+
+After the fix: 40/40 under a 5-worker stress repeat, and **33/33 on 8
+consecutive full runs**.
