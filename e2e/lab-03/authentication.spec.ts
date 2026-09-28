@@ -58,11 +58,19 @@ test("E2E-02 after logout, the app cannot be reused via back-navigation or a dir
   // Scoped to the main navigation in Lab 4 (docs/lab-04/tests.md §3) — see E2E-01.
   const myTicketsNav = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "My Tickets" });
   await expect(myTicketsNav).toBeVisible();
+  // Lab 4 (docs/lab-04/tests.md §3): visit a second protected screen before
+  // logging out, so Back returns to a protected page of the same app
+  // document. Without it, Back crossed documents, and in an intermittent
+  // failure its trace showed it landing on about:blank — an entry from before
+  // the app loaded, where no Sign In button can exist.
+  await myTicketsNav.click();
+  await expect(page).toHaveURL(/\/tickets$/);
 
   await page.getByRole("button", { name: /^logout$/i }).click();
   await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
 
   await page.goBack();
+  await expect(page).toHaveURL(/\/(dashboard|login)$/);
   await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
   await expect(myTicketsNav).toHaveCount(0);
 
