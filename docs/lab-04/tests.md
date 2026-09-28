@@ -160,11 +160,13 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | MIG-04 | Migration | §7 | Lab 1–3 data still reachable: a Lab 2 Ticket, its Attachments, comments, notes | Same content before/after | server/tests/lab-04/migration-regression.api.test.ts | Pass |
 | MIG-05 | Migration | §7 rollback | Rollback on a restored copy of the dump | Schema equals Lab 3 (`prisma migrate diff` empty), Lab 1–3 row counts unchanged | server/scripts/test-rollback.sh (output kept in this file) | Pass |
 | MIG-06 | Migration | §7 seed | Seed run twice | Same row counts after the second run | server/tests/lab-04/migration-regression.api.test.ts | Pass |
-| HARD-01 | API | AC-25, BR-28 | Same `Idempotency-Key` twice on POST action | One record; second response identical to the first | server/tests/lab-04/hardening.api.test.ts | Pending |
-| HARD-02 | API | AC-25, BR-28 | Same key twice on POST ticket / comment / note | One record each | server/tests/lab-04/hardening.api.test.ts | Pending |
-| HARD-03 | API | BR-28 | Same key used by two different users | Two independent records | server/tests/lab-04/hardening.api.test.ts | Pending |
-| HARD-04 | API | AC-28, BR-31 | `GET /api/requesters` with no session | No Requester data (404) | server/tests/lab-04/hardening.api.test.ts | Pending |
-| HARD-05 | API | BR-30 | A forced database failure on a Lab 4 route | 500 with a generic message, no stack | server/tests/lab-04/hardening.api.test.ts | Pending |
+| HARD-01 | API | AC-25, BR-28 | Same `Idempotency-Key` twice on POST action | One record; second response identical to the first | server/tests/lab-04/hardening.api.test.ts | Pass |
+| HARD-02 | API | AC-25, BR-28 | Same key twice on POST ticket / comment / note | One record each | server/tests/lab-04/hardening.api.test.ts | Pass |
+| HARD-03 | API | BR-28 | Same key used by two different users | Two independent records | server/tests/lab-04/hardening.api.test.ts | Pass |
+| HARD-04 | API | AC-28, BR-31 | `GET /api/requesters` with no session | No Requester data (404) | server/tests/lab-04/hardening.api.test.ts | Pass |
+| HARD-05 | API | BR-30 | A forced database failure on a Lab 4 route | 500 with a generic message, no stack | server/tests/lab-04/hardening.api.test.ts | Pass |
+| HARD-06 | Security | Lab 3 BR-10 (added in Issue 28) | Mutating request with a form-style body (urlencoded, text/plain); JSON, multipart, and body-less requests | 415 and nothing created; the others accepted | server/tests/lab-04/hardening.api.test.ts | Pass |
+| HARD-07 | API | handout §8.5 (added in Issue 28) | Session probe without / with a session, while a password change is pending; `/api/auth/me` unchanged | 200 `{data:null}` / 200 with the identity; `/me` still 401 | server/tests/lab-04/hardening.api.test.ts | Pass |
 
 ### UI component (`client/tests/lab-04/`)
 
@@ -190,8 +192,9 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | UI-18 | UI component | FR-06 | Successful status change | Badge, options, and history refreshed; live-region message | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
 | UI-19 | UI component | AC-15 | Status history timeline | Rows oldest first with who and when | client/tests/lab-04/TicketWorkflow.test.tsx | Pass |
 | UI-20 | UI component | FR-15 | Role navigation and landing screen | Dashboard first for every role; Administrator also sees My Queue | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
-| UI-21 | UI component | AC-25, FR-17 | Double click on "Save Action" | One request; submit disabled while in flight; `Idempotency-Key` sent | client/tests/lab-04/Hardening.test.tsx | Pending |
-| UI-22 | UI component | AC-26, FR-18 | Network failure on Create Ticket, Action form, comment box | Every entered value kept | client/tests/lab-04/Hardening.test.tsx | Pending |
+| UI-21 | UI component | AC-25, FR-17 | Double click on "Save Action" | One request; submit disabled while in flight; `Idempotency-Key` sent | client/tests/lab-04/Hardening.test.tsx | Pass |
+| UI-22 | UI component | AC-26, FR-18 | Network failure on Create Ticket, Action form, comment box | Every entered value kept | client/tests/lab-04/Hardening.test.tsx | Pass |
+| UI-23 | UI component | FR-16 (added in Issue 28) | Page restored from the back-forward cache | The session is checked again (no page stuck on "Loading…") | client/tests/lab-04/Hardening.test.tsx | Pass |
 
 ### UI style (`client/tests/lab-04/zen-green.style.test.tsx`)
 
@@ -201,7 +204,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | STYLE-02 | UI style | ui-spec §3 | Action status badges for the 4 statuses | Distinct classes and text labels | client/tests/lab-04/zen-green.style.test.tsx | Pass |
 | STYLE-03 | UI style | ui-spec §3, AC-29 | Actions Taken vs Internal Notes on staff detail | Different background/border and labels | client/tests/lab-04/zen-green.style.test.tsx | Pass |
 | STYLE-04 | UI style | ui-spec §3 | Action form editable vs read-only fields | `--zg-field-bg` vs `--zg-readonly-bg` | client/tests/lab-04/zen-green.style.test.tsx | Pass |
-| STYLE-05 | UI style | ui-spec §7 | Focus indicator | 3px `--zg-primary` outline on focus | client/tests/lab-04/zen-green.style.test.tsx | Pending |
+| STYLE-05 | UI style | ui-spec §7 | Focus indicator (moved to a browser test: jsdom does not evaluate `:focus-visible`) | 3px `--zg-primary` outline on keyboard focus | e2e/lab-04/responsive.spec.ts | Pending |
 
 ### Responsive and E2E (`e2e/lab-04/`)
 
@@ -218,7 +221,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | E2E-07 | E2E | AC-19, AC-21 | IT Staff dashboard card → Queue | Queue total equals the card count | e2e/lab-04/dashboards.spec.ts | Pending |
 | E2E-08 | E2E | AC-02, AC-21 | Requester dashboard card → My Tickets | Filtered list total equals the card count; only own Tickets | e2e/lab-04/dashboards.spec.ts | Pending |
 | E2E-09 | E2E | AC-20 | Zero-data seeded users log in | Zero cards; drill-down reaches no-results | e2e/lab-04/dashboards.spec.ts | Pending |
-| E2E-10 | E2E | AC-27 | Visual regression walk: authentication, My Tickets, Ticket Detail, Attachments, Public Comments, IT Staff functions, Internal Notes, User Management | Each screen works; screenshots saved | e2e/lab-04/regression.spec.ts | Pending |
+| E2E-10 | E2E | AC-27 | Visual regression walk: authentication, My Tickets, Ticket Detail, Attachments, Public Comments, IT Staff functions, Internal Notes, User Management | Each screen works; screenshots saved | e2e/lab-04/regression.spec.ts | Pass |
 
 ## 3. Regression — Labs 1 to 3
 
@@ -248,10 +251,11 @@ same PR as the behavior change, and the test then asserts the new rule.
 | UI-09 Administrator navigation | client/tests/lab-03/AppShell.test.tsx (l.79) | "Users" only, no "My Queue" | Dashboard, My Queue, Users | Revised matrix, FR-15 | 26 (done) |
 | E2E-01 lands on My Tickets after login; E2E-02 "My Tickets" link | e2e/lab-03/authentication.spec.ts (l.46–47, l.55, l.62) | URL `/tickets`; `getByRole("link", { name: "My Tickets" })` anywhere on the page | URL `/dashboard`; the same link looked up inside the main navigation | Dashboard is the landing screen (FR-15). E2E-02 was not on the original list: on the new landing page, the "View My Tickets" quick action also matches the loose name, and Playwright's strict mode rejected two matches — found by running it, not predicted | 27 (done) |
 | RESP-01 Ticket Queue across breakpoints | e2e/lab-03/staff-ticket-flow.spec.ts (l.111) | Relies on landing on the queue | Opens the queue explicitly first | Landing is now the Dashboard. Checked before changing it: the mobile step then passes on the wrong screen (the dashboard has no table either) and the tablet step fails — a half-silent failure, not the fully silent one this row first predicted | 26 (done) |
-| GET /api/requesters (2 tests) | server/tests/lab-02/requester-context.api.test.ts (l.30–42) | 200 with the Requester list | Replaced by HARD-04: no data returned | Unauthenticated disclosure removed, BR-31 | 28 |
+| GET /api/requesters (2 tests) | server/tests/lab-02/requester-context.api.test.ts (l.30–42) | 200 with the Requester list | Kept, rewritten to assert the route is gone and leaks no email (HARD-04 covers it too) | Unauthenticated disclosure removed, BR-31 | 28 (done) |
 | STAFF-Q-04 status filter | server/tests/lab-03/staff-queue.api.test.ts (l.73) | Seeded RESOLVED Ticket on page 1 of *all* RESOLVED Tickets | Same assertions, scoped with `search=TKT-9999` like its siblings STAFF-Q-05/06 | Test isolation, not a spec change: 84 RESOLVED Tickets had become newer than the seeded one (43 from Lab 4 workflow fixtures, 41 from other runs) | 25 (done) |
 | STAFF-Q-07 ownerId filter | server/tests/lab-03/staff-queue.api.test.ts (l.106) | Seeded Margaret-owned Tickets on page 1 of *all* her Tickets | Same assertions, scoped with `search=TKT-9999` | Test isolation: 51 of the 54 newer Margaret-owned Tickets came from Lab 3's own claim tests, so it was failing on its own | 25 (done) |
 | UI-14 Claim call arguments; staff detail fixtures | client/tests/lab-03/StaffTicketDetail.test.tsx (l.18, l.63–71, l.92), client/tests/lab-03/zen-green.style.test.tsx (l.52) | `setTicketOwner(1, userId)`; fixture without Lab 4 fields | `setTicketOwner(1, userId, 1)`; fixtures carry `version`, `resolvedAt`, `allowedTransitions` matching their status | Contract change: the UI always sends the version it read (BR-21) and renders the API's `allowedTransitions` | 25 (done) |
+| STAFF-Q-09 combined filters | server/tests/lab-03/staff-queue.api.test.ts (l.133) | Seeded OPEN+HIGH Tickets on page 1 of *all* OPEN+HIGH Tickets | Same assertions, scoped with `search=TKT-9999` | Test isolation, same class as STAFF-Q-04/07: 52 newer OPEN+HIGH Tickets (29 from Lab 3's own E2E-04, one per run; 22 from Lab 4 fixtures) — measured before the change | 28 (done) |
 
 ## 4. Acceptance Criteria traceability
 
@@ -536,3 +540,77 @@ by test fixtures, so demonstration screenshots need a clean account.
 **Covered:** FR-11, FR-14 (Requester side), FR-15 (Requester), BR-23; AC-02,
 AC-19–AC-21 and AC-24 (Requester side). Tests: DASH-R-01–DASH-R-08, PERF-02,
 UI-06–UI-08, UI-20 (Requester part).
+### Issue 28 — Final hardening and regression
+
+**TDD.** `hardening.api.test.ts` (HARD-01–HARD-06), `Hardening.test.tsx` (UI-21,
+UI-22) and `regression.spec.ts` (E2E-10) were written first. HARD-07 and UI-23
+were added mid-Issue, each as a failing test written before its fix, when the
+regression walk surfaced the problems described below. Cases that describe
+existing behavior passed immediately: HARD-03's "different users" / "no header"
+cases, HARD-05 (the generic 500 existed since Lab 3), and UI-22's Action and
+comment cases.
+
+**What changed**
+- **Duplicate prevention (BR-28).** `Idempotency-Key` on the four create routes.
+  The key is reserved *before* the handler runs, so a second request already in
+  flight gets `409` rather than a second record. A finished request is replayed;
+  a failed one releases its key. Every create form generates one key per
+  submission and keeps it for a retry, and a ref-based guard stops a double
+  click before any re-render has disabled the button.
+- **Removed `GET /api/requesters` (BR-31)** and its dead client function. The
+  two Lab 2 tests were rewritten to assert the route is gone (§3).
+- **CSRF content-type layer (HARD-06).** Lab 3's specification (BR-10) described
+  it, but the code never had it. Mutating requests with form-style bodies now get
+  `415`; JSON, multipart uploads, and body-less requests are accepted.
+- **Consistency.** Every date on every screen now goes through the display time
+  zone (8 raw `toLocale*` calls replaced). My Tickets shows status labels and
+  tones instead of raw `NEW`. Comments show "Requester" instead of `REQUESTER`. A
+  visible 3px primary focus outline replaces Bootstrap's faint ring.
+- **README** rewritten for the final product: setup, environment variables,
+  migration with a prior dump, rollback script, idempotent seed and demo accounts
+  (including the zero-data ones), all test levels, and a demonstration path.
+
+**Real defects found by the regression walk (E2E-10) and the E2E campaign**
+1. *Two console errors on every signed-out page load.* The app's start-up check
+   called `/api/auth/me`, whose Lab 3 contract answers `401` without a session,
+   and the browser logs every 401 as a console error. Added `GET
+   /api/auth/session`, which always answers 200 (`data: null` when signed out).
+   `/me` keeps its contract (HARD-07).
+2. *Lab 3's intermittent E2E-02, root cause found.* The trace showed the first
+   page's session check being **aborted** by the test's next navigation. Logout
+   followed by Back then restored that page from the back-forward cache, frozen
+   on "Loading…" with a request that would never answer. The AuthProvider now
+   re-checks the session on a restored page (UI-23). After the fix: 30/30 under a
+   5-worker stress repeat, and 1 failure in 30 full-suite runs (down from about 1
+   in 7). That remaining failure was not captured with a trace, so the fix is
+   reported as addressing a real cause, not as proven complete.
+3. *ECONNRESET on one login request* under parallel load: Node's default 5 s
+   keep-alive closed a socket at the moment the client reused it. The server now
+   keeps idle sockets for 65 s (headers timeout above it, as Node requires).
+4. *A sequencing defect in the new walk itself.* It logged the Administrator out
+   through the API while their dashboard was still loading, producing two 401s.
+   Found by recording each failing response's URL alongside console errors, then
+   fixed by waiting for the dashboard to finish loading.
+
+**Lab 3 isolation fix.** STAFF-Q-09 had the same page-1 volume dependency as
+STAFF-Q-04/07 (measured: 52 newer OPEN+HIGH Tickets). Scoped the same way (§3).
+
+**Intermittent, cause not established.** Lab 3's CN-07 once returned `401` for a
+freshly logged-in staff session during a full server run. It never reproduced in
+15 isolated runs or 7 further full runs. Recorded here rather than dismissed.
+
+**Regression screenshots** for handout Part 8, from E2E-10, in
+`artifacts/lab-04/screenshots/regression/`: login, forced password change, My
+Tickets, Ticket Detail with attachment and comment, staff queue, staff Ticket
+Detail with internal note, the Requester's view without the note, User
+Management.
+
+**Results:**
+- Server: **267/267**, `tsc` clean.
+- Client: **101/101**, `tsc` clean (stderr: only the two pre-existing Lab 2 `act()`
+  warnings).
+- Playwright (Lab 2–4, 18 tests): 30 full runs after the last fixes, 29 fully
+  green; the one failure is the E2E-02 case above.
+
+**Covered:** FR-16–FR-21, BR-28–BR-31; AC-25–AC-28. Tests: HARD-01–HARD-07,
+UI-21–UI-23, E2E-10.

@@ -21,6 +21,7 @@ import {
   TicketStatus,
 } from "./api.js";
 import { STATUS_LABELS, statusTone } from "./ticketStatus.js";
+import { formatDateTime } from "./dates.js";
 
 type LoadState = "loading" | "loaded" | "error";
 
@@ -184,7 +185,7 @@ export default function StaffTicketDetail() {
           <Badge tone={statusTone(ticket.status)}>{STATUS_LABELS[ticket.status]}</Badge>
         </div>
         <small className="text-muted">
-          {ticket.categoryName} · Created {new Date(ticket.createdAt).toLocaleString()}
+          {ticket.categoryName} · Created {formatDateTime(ticket.createdAt)}
         </small>
       </div>
 
@@ -364,8 +365,8 @@ export default function StaffTicketDetail() {
         <CommentPanel
           variant="public"
           entries={ticket.publicComments}
-          onPost={async (content) => {
-            await postComment(ticket.id, content);
+          onPost={async (content, key) => {
+            await postComment(ticket.id, content, key);
             await load();
           }}
         />
@@ -375,8 +376,8 @@ export default function StaffTicketDetail() {
         <CommentPanel
           variant="internal"
           entries={ticket.internalNotes}
-          onPost={async (content) => {
-            await postNote(ticket.id, content);
+          onPost={async (content, key) => {
+            await postNote(ticket.id, content, key);
             await load();
           }}
         />

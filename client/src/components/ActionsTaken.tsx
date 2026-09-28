@@ -14,6 +14,7 @@ import {
 } from "../api.js";
 import { ACTION_STATUS_LABELS, actionStatusTone, isTerminalAction } from "../actionStatus.js";
 import { formatDateTime, fromDateTimeInput, toDateTimeInput } from "../dates.js";
+import { useIdempotencyKey } from "../idempotencyKey.js";
 
 const ACTIVE_TICKET_STATUSES: TicketStatus[] = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "REOPENED"];
 
@@ -337,6 +338,10 @@ function ActionForm({ ticketId, action, staffUsers, canChange = true, onClose, o
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cancelTriggerRef = useRef<HTMLButtonElement>(null);
+  // FR-17 — a ref, not state: a second click in the same frame sees it
+  // before any re-render has disabled the button.
+  const submittingRef = useRef(false);
+  const idempotencyKey = useIdempotencyKey();
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -361,14 +366,19 @@ function ActionForm({ ticketId, action, staffUsers, canChange = true, onClose, o
   }
 
   async function run(request: () => Promise<ActionTaken>) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setBusy(true);
     setFormError("");
     setStale(false);
     try {
-      onSaved(await request());
+      const saved = await request();
+      idempotencyKey.rotate();
+      onSaved(saved);
     } catch (err) {
       handleError(err);
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   }
@@ -401,7 +411,7 @@ function ActionForm({ ticketId, action, staffUsers, canChange = true, onClose, o
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
     if (isNew) {
-      run(() => createTicketAction(ticketId, { ...payload(), status: values.status }));
+      run(() => createTicketAction(ticketId, { ...payload(), status: values.status }, idempotencyKey.current()));
     } else {
       run(() => updateTicketAction(action.id, { ...payload(), version: action.version }));
     }

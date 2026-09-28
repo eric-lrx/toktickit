@@ -29,19 +29,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .getCurrentUser()
-      .then((current) => {
-        if (!cancelled) setUser(current);
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const check = () =>
+      api
+        .getCurrentUser()
+        .then((current) => {
+          if (!cancelled) setUser(current);
+        })
+        .catch(() => {
+          if (!cancelled) setUser(null);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    check();
+
+    // Lab 4 — a page restored from the back-forward cache comes back frozen
+    // as it was: if it was left while this check was still in flight (the
+    // request is aborted by the navigation), it stayed on "Loading…" forever.
+    // That was the cause of Lab 3 E2E-02's intermittent failure after
+    // logout + back. A restored page asks the server again.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) check();
+    };
+    window.addEventListener("pageshow", onPageShow);
     return () => {
       cancelled = true;
+      window.removeEventListener("pageshow", onPageShow);
     };
   }, []);
 

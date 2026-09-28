@@ -52,12 +52,14 @@ export async function logout(): Promise<void> {
   }
 }
 
+// Lab 4 — asks the always-200 session probe rather than /api/auth/me, so a
+// signed-out start-up leaves no 401 in the browser console. Still throws
+// when nobody is signed in, the contract every caller already relies on.
 export async function getCurrentUser(): Promise<AuthUser> {
-  const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
-  if (!res.ok) {
-    throw new Error("Not authenticated");
-  }
+  const res = await fetch(`${API_URL}/api/auth/session`, { credentials: "include" });
+  if (!res.ok) throw new Error("Unable to check the current session.");
   const json = await res.json();
+  if (!json.data) throw new Error("no session");
   return json.data;
 }
 
@@ -82,21 +84,6 @@ export async function changePassword(currentPassword: string, newPassword: strin
 export interface Category {
   id: number;
   name: string;
-}
-
-export interface Requester {
-  id: number;
-  name: string;
-  email: string;
-}
-
-// Issue 6 — active Development Requesters for the selector screen.
-export async function getActiveRequesters(): Promise<Requester[]> {
-  const res = await fetch(`${API_URL}/api/requesters`);
-  if (!res.ok) {
-    throw new Error("Failed to load requesters");
-  }
-  return res.json();
 }
 
 export interface RelatedSystem {
@@ -217,7 +204,8 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 // detail goes to console.error only — the same leak (raw "Failed to fetch"
 // reaching the UI) was flagged on Lab 1's checkSystem() and is worth not
 // repeating here.
-export async function createTicket(input: CreateTicketInput, files: File[] = []): Promise<TicketDetail> {
+export async function createTicket(input: CreateTicketInput, files: File[] = [], idempotencyKey?: string): Promise<TicketDetail> {
+  const keyHeader: Record<string, string> = idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {};
   let res: Response;
   try {
     if (files.length > 0) {
@@ -231,13 +219,14 @@ export async function createTicket(input: CreateTicketInput, files: File[] = [])
       res = await fetch(`${API_URL}/api/tickets`, {
         method: "POST",
         credentials: "include",
+        headers: keyHeader,
         body: formData,
       });
     } else {
       res = await fetch(`${API_URL}/api/tickets`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...keyHeader },
         body: JSON.stringify(input),
       });
     }
@@ -560,11 +549,11 @@ export async function indicateResolution(id: number): Promise<void> {
 // Issue 37 — Public Comments (owning Requester or any IT Staff) and
 // Internal Notes (IT Staff only). Both append-only: no update/remove calls
 // exist because no such route exists server-side (BR-25).
-export async function postComment(ticketId: number, content: string): Promise<PublicComment> {
+export async function postComment(ticketId: number, content: string, idempotencyKey?: string): Promise<PublicComment> {
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}/comments`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}) },
     body: JSON.stringify({ content }),
   });
   if (!res.ok) throw new Error(await readStaffError(res, "Unable to post your comment. Please try again."));
@@ -572,11 +561,11 @@ export async function postComment(ticketId: number, content: string): Promise<Pu
   return json.data;
 }
 
-export async function postNote(ticketId: number, content: string): Promise<InternalNote> {
+export async function postNote(ticketId: number, content: string, idempotencyKey?: string): Promise<InternalNote> {
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}/notes`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}) },
     body: JSON.stringify({ content }),
   });
   if (!res.ok) throw new Error(await readStaffError(res, "Unable to post the internal note. Please try again."));
@@ -682,13 +671,13 @@ async function toApiError(res: Response, fallback: string): Promise<ApiError> {
   }
 }
 
-async function sendJson(url: string, method: string, body: unknown, fallback: string): Promise<Response> {
+async function sendJson(url: string, method: string, body: unknown, fallback: string, extraHeaders: Record<string, string> = {}): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(url, {
       method,
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...extraHeaders },
       body: JSON.stringify(body),
     });
   } catch (err) {
@@ -746,8 +735,14 @@ export async function getTicketActions(ticketId: number): Promise<ActionTaken[]>
   return json.data;
 }
 
-export async function createTicketAction(ticketId: number, input: ActionInput): Promise<ActionTaken> {
-  const res = await sendJson(`${API_URL}/api/tickets/${ticketId}/actions`, "POST", input, "Unable to save the action. Please try again.");
+export async function createTicketAction(ticketId: number, input: ActionInput, idempotencyKey?: string): Promise<ActionTaken> {
+  const res = await sendJson(
+    `${API_URL}/api/tickets/${ticketId}/actions`,
+    "POST",
+    input,
+    "Unable to save the action. Please try again.",
+    idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}
+  );
   const json = await res.json();
   return json.data;
 }

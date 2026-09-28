@@ -6,6 +6,10 @@ export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", { timeZone: APP_TIMEZONE, dateStyle: "medium", timeStyle: "short" });
 }
 
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { timeZone: APP_TIMEZONE, day: "numeric", month: "short", year: "numeric" });
+}
+
 // <input type="datetime-local"> works in the browser's local time; these two
 // helpers convert between that and the ISO strings the API uses.
 export function toDateTimeInput(iso: string): string {

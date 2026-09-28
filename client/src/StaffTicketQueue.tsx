@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import Badge from "./components/Badge.js";
 import { getStaffQueue, getStaffUsers, RequestedPriority, StaffTicket, StaffUser } from "./api.js";
 import { STATUS_LABELS, STATUSES, statusTone } from "./ticketStatus.js";
+import { formatDate } from "./dates.js";
 
 type LoadState = "loading" | "loaded" | "forbidden" | "error";
 type SortField = "createdAt" | "updatedAt" | "itPriority" | "ticketNumber";
@@ -247,7 +248,7 @@ export default function StaffTicketQueue() {
                     <td>
                       <Link to={`/queue/${t.id}`}>{t.ticketNumber}</Link>
                     </td>
-                    <td>{new Date(t.createdAt).toLocaleDateString()}</td>
+                    <td>{formatDate(t.createdAt)}</td>
                     <td>{t.summary}</td>
                     <td className="d-none d-lg-table-cell">{t.categoryName}</td>
                     <td>
@@ -260,7 +261,7 @@ export default function StaffTicketQueue() {
                       <Badge tone={statusTone(t.status)}>{STATUS_LABELS[t.status]}</Badge>
                     </td>
                     <td>{t.ticketOwnerName ?? "Unassigned"}</td>
-                    <td>{new Date(t.updatedAt).toLocaleDateString()}</td>
+                    <td>{formatDate(t.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>

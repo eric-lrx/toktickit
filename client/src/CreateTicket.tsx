@@ -1,7 +1,8 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import FormField from "./components/FormField.js";
 import AttachmentSection from "./components/AttachmentSection.js";
+import { useIdempotencyKey } from "./idempotencyKey.js";
 import {
   Category,
   createTicket,
@@ -28,6 +29,9 @@ export default function CreateTicket() {
   const [apiError, setApiError] = useState("");
   const [ticketNumber, setTicketNumber] = useState("");
   const [ticketId, setTicketId] = useState<number | null>(null);
+  // Lab 4 (FR-17, BR-28) — one key per submission, kept for a retry.
+  const idempotencyKey = useIdempotencyKey();
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
@@ -48,6 +52,8 @@ export default function CreateTicket() {
     const validationErrors = validate();
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     setStatus("submitting");
     setApiError("");
@@ -60,14 +66,18 @@ export default function CreateTicket() {
           description: description.trim(),
           requestedPriority,
         },
-        attachments
+        attachments,
+        idempotencyKey.current()
       );
+      idempotencyKey.rotate();
       setTicketNumber(ticket.ticketNumber);
       setTicketId(ticket.id);
       setStatus("success");
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Unable to create ticket.");
       setStatus("error");
+    } finally {
+      submittingRef.current = false;
     }
   }
 

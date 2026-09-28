@@ -99,7 +99,8 @@ describe("ActionsTaken — staff", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save Action" }));
     expect(createSpy).toHaveBeenCalledWith(
       10,
-      expect.objectContaining({ description: "Reset the password", followUpRequired: true, followUpNote: "Call back on Monday" })
+      expect.objectContaining({ description: "Reset the password", followUpRequired: true, followUpNote: "Call back on Monday" }),
+      expect.any(String)
     );
   });
 

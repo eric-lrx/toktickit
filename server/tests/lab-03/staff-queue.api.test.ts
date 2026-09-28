@@ -132,7 +132,10 @@ describe("GET /api/staff/tickets — queue contract", () => {
 
   it("STAFF-Q-09 combined filters return only Tickets matching all of them", async () => {
     const res = await request(app)
-      .get("/api/staff/tickets?status=OPEN&itPriority=HIGH&pageSize=50")
+      // Scoped with search=TKT-9999 in Lab 4 (docs/lab-04/tests.md §3): 52
+      // OPEN+HIGH Tickets had become newer than the seeded ones — 29 from
+      // Lab 3's own E2E-04 (one per E2E run), 22 from Lab 4 fixtures.
+      .get("/api/staff/tickets?status=OPEN&itPriority=HIGH&search=TKT-9999&pageSize=50")
       .set("Cookie", staffCookie);
     expect(res.status).toBe(200);
     expect(ticketNumbers(res.body)).toEqual(expect.arrayContaining(["TKT-9999-000002", "TKT-9999-000010"]));
