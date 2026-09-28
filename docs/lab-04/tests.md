@@ -118,14 +118,14 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
-| DASH-R-01 | API | AC-19 | Each of the 4 counts vs a direct Prisma count for that Requester | Equal | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
-| DASH-R-02 | API | AC-02, BR-23 | Another Requester's Tickets in every status exist | Never counted or listed | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
-| DASH-R-03 | API | AC-19 | Recent Tickets list | 5 max, `updatedAt` desc, own only, equals direct query | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
-| DASH-R-04 | API | AC-19 | Recently Resolved list | 5 max, `resolvedAt` desc, RESOLVED/CLOSED only | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
-| DASH-R-05 | API | AC-20, BR-26 | Requester with no Tickets | All counts 0, lists empty, drill-downs present | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
-| DASH-R-06 | API | AC-21, BR-27 | Each card's drill-down applied to `GET /api/tickets` | `meta.total` equals the card count | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
-| DASH-R-07 | Authorization | FR-11 | IT Staff / Administrator / no session call it | 403 / 403 / 401 | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
-| DASH-R-08 | API | BR-27 | `GET /api/tickets?status=NEW,OPEN` and an unknown status | Filtered list; 400 naming the bad value | server/tests/lab-04/requester-dashboard.api.test.ts | Pending |
+| DASH-R-01 | API | AC-19 | Each of the 4 counts vs a direct Prisma count for that Requester | Equal | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
+| DASH-R-02 | API | AC-02, BR-23 | Another Requester's Tickets in every status exist | Never counted or listed | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
+| DASH-R-03 | API | AC-19 | Recent Tickets list | 5 max, `updatedAt` desc, own only, equals direct query | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
+| DASH-R-04 | API | AC-19 | Recently Resolved list | 5 max, `resolvedAt` desc, RESOLVED/CLOSED only | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
+| DASH-R-05 | API | AC-20, BR-26 | Requester with no Tickets | All counts 0, lists empty, drill-downs present | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
+| DASH-R-06 | API | AC-21, BR-27 | Each card's drill-down applied to `GET /api/tickets` | `meta.total` equals the card count | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
+| DASH-R-07 | Authorization | FR-11 | IT Staff / Administrator / no session call it | 403 / 403 / 401 | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
+| DASH-R-08 | API | BR-27 | `GET /api/tickets?status=NEW,OPEN` and an unknown status | Filtered list; 400 naming the bad value | server/tests/lab-04/requester-dashboard.api.test.ts | Pass |
 
 ### API — IT Staff dashboard (`staff-dashboard.api.test.ts`)
 
@@ -147,7 +147,7 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | Test ID | Type | Requirement/AC | What It Tests | Expected Result | Automated Test File | Final |
 |---|---|---|---|---|---|---|
 | PERF-01 | Performance-smoke | AC-24 | Staff dashboard on ≥ 2,000 Tickets and ≥ 2,000 Actions Taken | < 300 ms (median of 5 calls) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
-| PERF-02 | Performance-smoke | AC-24 | Requester dashboard on the same volume | < 300 ms | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pending |
+| PERF-02 | Performance-smoke | AC-24 | Requester dashboard on the same volume | < 300 ms | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
 | PERF-03 | Performance-smoke | AC-24, BR-22 | SQL statements per staff dashboard call for two users with different, non-zero numbers of open actions (and a zero-data user) | Same count for both busy users, ≤ 12, zero-data user ≤ that (no per-row queries) | server/tests/lab-04/dashboard-performance.smoke.test.ts | Pass |
 
 ### Migration / hardening API (`migration-regression.api.test.ts`, `hardening.api.test.ts`)
@@ -175,9 +175,9 @@ Every Acceptance Criterion in `specification.md` maps to at least one row (§4).
 | UI-03 | UI component | AC-20 | Zero metrics and empty lists | "0" shown, "View all" kept, empty messages | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
 | UI-04 | UI component | FR-19 | Loading, then API failure | Skeletons, then error panel with "Try again"; no numbers | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
 | UI-05 | UI component | AC-23 | Administrator variant | Active/Inactive Users cards present | client/tests/lab-04/StaffDashboard.test.tsx | Pass |
-| UI-06 | UI component | FR-11 | Requester dashboard cards, recent and recently resolved lists | Rendered from API data | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
-| UI-07 | UI component | AC-21 | Requester card → My Tickets with the status filter pre-applied and visible | Filter chips shown, request sent with `status` | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
-| UI-08 | UI component | AC-20 | Requester with no Tickets | Zeros, "No tickets yet" + Create Ticket | client/tests/lab-04/RequesterDashboard.test.tsx | Pending |
+| UI-06 | UI component | FR-11 | Requester dashboard cards, recent and recently resolved lists | Rendered from API data | client/tests/lab-04/RequesterDashboard.test.tsx | Pass |
+| UI-07 | UI component | AC-21 | Requester card → My Tickets with the status filter pre-applied and visible | Filter chips shown, request sent with `status` | client/tests/lab-04/RequesterDashboard.test.tsx | Pass |
+| UI-08 | UI component | AC-20 | Requester with no Tickets | Zeros, "No tickets yet" + Create Ticket | client/tests/lab-04/RequesterDashboard.test.tsx | Pass |
 | UI-09 | UI component | AC-10 | Actions Taken list with several actions | All rendered in API order with status badges | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
 | UI-10 | UI component | FR-02, AC-04 | Create form: follow-up note appears and becomes required when ticked | Client-side error without a note; request blocked | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
 | UI-11 | UI component | AC-05 | Server rejects an inactive assignee | Error under Assignee, entered values kept | client/tests/lab-04/ActionsTaken.test.tsx | Pass |
@@ -246,7 +246,7 @@ same PR as the behavior change, and the test then asserts the new rule.
 | AUTHZ-11 Administrator claims/reassigns | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.147) | 403 | 200 | Revised matrix, AC-17 | 25 (done) |
 | AUTHZ-11 Administrator changes status | server/tests/lab-03/staff-ticket-detail.api.test.ts (l.234) | 403 | 200 | Revised matrix, AC-17 | 25 (done) |
 | UI-09 Administrator navigation | client/tests/lab-03/AppShell.test.tsx (l.79) | "Users" only, no "My Queue" | Dashboard, My Queue, Users | Revised matrix, FR-15 | 26 (done) |
-| E2E-01 lands on My Tickets after login | e2e/lab-03/authentication.spec.ts (l.47) | URL `/tickets` | URL `/dashboard`, then "My Tickets" link visible | Dashboard is the landing screen, FR-15 | 27 |
+| E2E-01 lands on My Tickets after login; E2E-02 "My Tickets" link | e2e/lab-03/authentication.spec.ts (l.46–47, l.55, l.62) | URL `/tickets`; `getByRole("link", { name: "My Tickets" })` anywhere on the page | URL `/dashboard`; the same link looked up inside the main navigation | Dashboard is the landing screen (FR-15). E2E-02 was not on the original list: on the new landing page, the "View My Tickets" quick action also matches the loose name, and Playwright's strict mode rejected two matches — found by running it, not predicted | 27 (done) |
 | RESP-01 Ticket Queue across breakpoints | e2e/lab-03/staff-ticket-flow.spec.ts (l.111) | Relies on landing on the queue | Opens the queue explicitly first | Landing is now the Dashboard. Checked before changing it: the mobile step then passes on the wrong screen (the dashboard has no table either) and the tablet step fails — a half-silent failure, not the fully silent one this row first predicted | 26 (done) |
 | GET /api/requesters (2 tests) | server/tests/lab-02/requester-context.api.test.ts (l.30–42) | 200 with the Requester list | Replaced by HARD-04: no data returned | Unauthenticated disclosure removed, BR-31 | 28 |
 | STAFF-Q-04 status filter | server/tests/lab-03/staff-queue.api.test.ts (l.73) | Seeded RESOLVED Ticket on page 1 of *all* RESOLVED Tickets | Same assertions, scoped with `search=TKT-9999` like its siblings STAFF-Q-05/06 | Test isolation, not a spec change: 84 RESOLVED Tickets had become newer than the seeded one (43 from Lab 4 workflow fixtures, 41 from other runs) | 25 (done) |
@@ -490,3 +490,49 @@ zero-data user as a lower bound, and caps the count at 12.
 **Covered:** FR-12, FR-13, FR-14 (staff side), FR-15 (staff roles), BR-22,
 BR-24–BR-27; AC-19–AC-24 (staff side). Tests: UNIT-03, DASH-S-01–DASH-S-10,
 PERF-01, PERF-03, UI-01–UI-05, UI-20.
+
+### Issue 27 — Requester dashboard
+
+**TDD.** `requester-dashboard.api.test.ts` (DASH-R-01–DASH-R-08), PERF-02 and
+`RequesterDashboard.test.tsx` (UI-06–UI-08, the Requester part of UI-20, the My
+Tickets drill-down) were written first and failed on the missing route, filter,
+and screen.
+
+**Implementation notes.** `GET /api/dashboard/requester` is one `groupBy` scoped to
+`requesterId = session user` plus two bounded lists — the client never names the
+Requester. `GET /api/tickets` accepts the same comma-separated `status`, always on
+top of the session-owned scope. My Tickets reads its status filter from the URL and
+shows it as removable chips with "Clear filters". Requesters now land on the
+Dashboard, with Dashboard first in their navigation.
+
+**Lab 3 E2E updates** (listed in §3): E2E-01 now expects `/dashboard`. E2E-02 was
+**not** on the planned list: running it showed that the new landing page's "View
+My Tickets" quick action also matches its loose `name: "My Tickets"` lookup, so
+Playwright's strict mode refused two matches. Both lookups are now scoped to the
+main navigation, which is what they meant.
+
+**An environment incident, not a code defect.** The first E2E run of this Issue
+failed 15 tests in about 0.2 s each: both dev servers had been stopped by the app
+during an 11-hour pause between sessions. Restarted, then run for real.
+
+**Real-app check** (temporary Playwright script, then deleted):
+- Ada's four cards against direct SQL: My Open 2137, Waiting for Me 29, Resolved
+  124, Closed 26 — identical.
+- The ten listed Tickets all belong to Ada (checked in SQL).
+- "My Open Tickets" opens My Tickets with the four status chips and "(2137
+  tickets)", the card's own count.
+- Zoe (no Tickets) sees four zeros, and "Closed: 0" leads to the no-results state.
+- No overflow at 1280, 820, or 375px; 0 console errors.
+
+Noted for Issue 28: My Tickets (Lab 2) shows status badges in capitals ("NEW")
+where every other screen writes "New". Noted for Issue 29: Ada's data is dominated
+by test fixtures, so demonstration screenshots need a clean account.
+
+**Results:**
+- Server: **254/254**. PERF-02 median 2.8 ms.
+- Client: **94/94**; `tsc` clean.
+- Playwright (Lab 2–3): 17/17 on three consecutive runs.
+
+**Covered:** FR-11, FR-14 (Requester side), FR-15 (Requester), BR-23; AC-02,
+AC-19–AC-21 and AC-24 (Requester side). Tests: DASH-R-01–DASH-R-08, PERF-02,
+UI-06–UI-08, UI-20 (Requester part).

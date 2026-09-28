@@ -15,6 +15,7 @@ const NAV_BY_ROLE: Record<Role, { to: string; label: string; end?: boolean }[]> 
   // end on "/tickets" — without it, NavLink's prefix match would also mark
   // My Tickets active while on /tickets/new or /tickets/:id.
   REQUESTER: [
+    { to: "/dashboard", label: "Dashboard" },
     { to: "/tickets", label: "My Tickets", end: true },
     { to: "/tickets/new", label: "Create Ticket" },
   ],

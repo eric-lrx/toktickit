@@ -351,6 +351,8 @@ export interface MyTicketsQuery {
   categoryId?: number;
   relatedSystemId?: number;
   requestedPriority?: RequestedPriority;
+  // Lab 4 — one status or a comma-separated list (Requester dashboard drill-down).
+  status?: string;
   sort?: "createdAt" | "ticketNumber" | "summary";
   order?: "asc" | "desc";
   page?: number;
@@ -368,6 +370,7 @@ export async function getMyTickets(query: MyTicketsQuery): Promise<MyTicketsResu
   if (query.categoryId !== undefined) params.set("categoryId", String(query.categoryId));
   if (query.relatedSystemId !== undefined) params.set("relatedSystemId", String(query.relatedSystemId));
   if (query.requestedPriority) params.set("requestedPriority", query.requestedPriority);
+  if (query.status) params.set("status", query.status);
   if (query.sort) params.set("sort", query.sort);
   if (query.order) params.set("order", query.order);
   params.set("page", String(query.page ?? 1));
@@ -822,4 +825,23 @@ async function getDashboard<T>(path: string): Promise<T> {
 
 export function getStaffDashboard(): Promise<StaffDashboardData> {
   return getDashboard<StaffDashboardData>("/api/dashboard/staff");
+}
+
+export interface RequesterDashboardTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  status: TicketStatus;
+  updatedAt: string;
+  resolvedAt: string | null;
+}
+
+export interface RequesterDashboardData {
+  metrics: DashboardMetric[];
+  recentTickets: RequesterDashboardTicket[];
+  recentlyResolved: RequesterDashboardTicket[];
+}
+
+export function getRequesterDashboard(): Promise<RequesterDashboardData> {
+  return getDashboard<RequesterDashboardData>("/api/dashboard/requester");
 }

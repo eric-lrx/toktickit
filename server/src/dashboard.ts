@@ -95,4 +95,49 @@ export function registerDashboardRoutes(app: Express) {
       sendFailure(res);
     }
   });
+
+  // BR-23 — every figure is filtered by the session user; the client never
+  // names the Requester (AC-02).
+  app.get("/api/dashboard/requester", requireAuth, requireRole("REQUESTER"), async (req: AuthedRequest, res: Response) => {
+    const requesterId = req.user!.id;
+    const prisma = getPrisma();
+    const listSelect = { id: true, ticketNumber: true, summary: true, status: true, updatedAt: true, resolvedAt: true } as const;
+
+    try {
+      const [byStatus, recent, recentlyResolved] = await Promise.all([
+        prisma.ticket.groupBy({ by: ["status"], where: { requesterId }, _count: { _all: true } }),
+        prisma.ticket.findMany({ where: { requesterId }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], take: 5, select: listSelect }),
+        prisma.ticket.findMany({
+          where: { requesterId, status: { in: ["RESOLVED", "CLOSED"] }, resolvedAt: { not: null } },
+          orderBy: [{ resolvedAt: "desc" }, { id: "desc" }],
+          take: 5,
+          select: listSelect,
+        }),
+      ]);
+
+      const sum = (statuses: TicketStatus[]) =>
+        byStatus.filter((row) => statuses.includes(row.status)).reduce((total, row) => total + row._count._all, 0);
+      const bucket = (key: string, label: string, statuses: TicketStatus[]): Metric => ({
+        key,
+        label,
+        count: sum(statuses),
+        drillDown: { path: "/tickets", query: { status: statuses.join(",") } },
+      });
+
+      res.status(200).json({
+        data: {
+          metrics: [
+            bucket("myOpen", "My Open Tickets", ["NEW", "OPEN", "IN_PROGRESS", "REOPENED"]),
+            bucket("waitingForMe", "Waiting for Me", ["WAITING_FOR_REQUESTER"]),
+            bucket("resolved", "Resolved", ["RESOLVED"]),
+            bucket("closed", "Closed", ["CLOSED"]),
+          ],
+          recentTickets: recent,
+          recentlyResolved,
+        },
+      });
+    } catch {
+      sendFailure(res);
+    }
+  });
 }

@@ -221,3 +221,8 @@ body {
 .zg-list-row > [class^="badge-"] {
   justify-self: start;
 }
+@media (min-width: 992px) {
+  .zg-metric-grid.zg-metric-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

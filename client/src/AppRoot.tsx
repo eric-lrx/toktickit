@@ -9,11 +9,12 @@ import RequesterTicketDetail from "./RequesterTicketDetail.js";
 import StaffTicketQueue from "./StaffTicketQueue.js";
 import StaffTicketDetail from "./StaffTicketDetail.js";
 import StaffDashboard from "./StaffDashboard.js";
+import RequesterDashboard from "./RequesterDashboard.js";
 import UserManagement from "./UserManagement.js";
 import { Role } from "./api.js";
 
 const ROLE_HOME: Record<Role, string> = {
-  REQUESTER: "/tickets",
+  REQUESTER: "/dashboard",
   // Lab 4 (FR-15) — the dashboard is the staff roles' starting point.
   IT_STAFF: "/dashboard",
   ADMINISTRATOR: "/dashboard",
@@ -71,6 +72,7 @@ function AuthenticatedApp() {
         <Route path="/" element={<Navigate to={ROLE_HOME[user.role]} replace />} />
         {user.role === "REQUESTER" && (
           <>
+            <Route path="/dashboard" element={<RequesterDashboard />} />
             <Route path="/tickets" element={<MyTickets />} />
             <Route path="/tickets/new" element={<CreateTicket />} />
             <Route path="/tickets/:id" element={<RequesterTicketDetail />} />
